@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "PDTuWmZEa5o=",
+  "dgSpecHash": "QtxoR4gE2b+MbJeJuzbs/L8+6ZcTWo6aKjqRiMCEBPYU2Uzc51sJ59CBEsw/g53v8GKwyPJqb3N+GkIrNvjwDQ==",
   "success": true,
-  "projectFilePath": "C:\\Users\\finge\\source\\repos\\BlazorBoy\\src\\GameBoy.Core\\GameBoy.Core.csproj",
+  "projectFilePath": "/home/runner/work/BlazorBoy/BlazorBoy/src/GameBoy.Core/GameBoy.Core.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }
