@@ -1,0 +1,18 @@
+# Build artifacts
+bin/
+obj/
+/dist/
+
+# IDE files
+.vs/
+.vscode/
+*.user
+
+# NuGet packages
+*.nupkg
+packages/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
