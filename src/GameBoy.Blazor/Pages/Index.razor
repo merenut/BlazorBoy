@@ -1,0 +1,86 @@
+@page "/"
+@using GameBoy.Core
+@inject Emulator Emulator
+@inject IJSRuntime JS
+
+<h1>Game Boy (Blazor)</h1>
+
+<div class="row g-3">
+    <div class="col-auto">
+        <InputFile OnChange="OnRomSelected" />
+    </div>
+    <div class="col-auto align-self-center">
+        <span>FPS: @(_lastFps.ToString("0.0"))</span>
+    </div>
+</div>
+
+<div tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @ref="_focusable">
+    <canvas id="screen" width="160" height="144" style="image-rendering: pixelated; width: 320px; height: 288px; border:1px solid #ccc"></canvas>
+    <p class="text-muted">Click here and use arrows, Z, X, Enter, Shift.</p>
+    </div>
+
+@code {
+    private DotNetObjectReference<Index>? _dotNetRef;
+    private double _lastFps;
+    private long _lastTs;
+    private ElementReference _focusable;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("gbInterop.startRenderLoop", _dotNetRef);
+            await _focusable.FocusAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async Task<bool> OnAnimationFrame(double timestamp)
+    {
+        if (_lastTs == 0)
+            _lastTs = (long)timestamp;
+        var delta = timestamp - _lastTs;
+        _lastTs = (long)timestamp;
+        if (delta > 0)
+            _lastFps = 1000.0 / delta;
+
+        bool frameReady = Emulator.StepFrame();
+        if (frameReady)
+        {
+            await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+        }
+        StateHasChanged();
+        return true; // continue loop
+    }
+
+    
+
+    private void OnKeyDown(KeyboardEventArgs e) => UpdateJoypad(e, true);
+    private void OnKeyUp(KeyboardEventArgs e) => UpdateJoypad(e, false);
+
+    private void UpdateJoypad(KeyboardEventArgs e, bool down)
+    {
+        switch (e.Key)
+        {
+            case "ArrowRight": Emulator.Joypad.Right = down; break;
+            case "ArrowLeft": Emulator.Joypad.Left = down; break;
+            case "ArrowUp": Emulator.Joypad.Up = down; break;
+            case "ArrowDown": Emulator.Joypad.Down = down; break;
+            case "z": case "Z": Emulator.Joypad.A = down; break;
+            case "x": case "X": Emulator.Joypad.B = down; break;
+            case "Enter": Emulator.Joypad.Start = down; break;
+            case "Shift": Emulator.Joypad.Select = down; break;
+        }
+    }
+
+    private async Task OnRomSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+        using var stream = file.OpenReadStream(maxAllowedSize: 4 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        Emulator.LoadRom(ms.ToArray());
+    }
+}

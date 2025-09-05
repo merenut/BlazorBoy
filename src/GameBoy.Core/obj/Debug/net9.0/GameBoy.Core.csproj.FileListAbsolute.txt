@@ -1,0 +1,11 @@
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\bin\Debug\net9.0\GameBoy.Core.deps.json
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\bin\Debug\net9.0\GameBoy.Core.dll
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\bin\Debug\net9.0\GameBoy.Core.pdb
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\obj\Debug\net9.0\GameBoy.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\obj\Debug\net9.0\GameBoy.Core.AssemblyInfoInputs.cache
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\obj\Debug\net9.0\GameBoy.Core.AssemblyInfo.cs
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\obj\Debug\net9.0\GameBoy.Core.csproj.CoreCompileInputs.cache
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\obj\Debug\net9.0\GameBoy.Core.dll
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\obj\Debug\net9.0\refint\GameBoy.Core.dll
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\obj\Debug\net9.0\GameBoy.Core.pdb
+C:\Users\finge\source\repos\BlazorBoy\src\GameBoy.Core\obj\Debug\net9.0\ref\GameBoy.Core.dll
