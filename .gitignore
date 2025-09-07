@@ -1,18 +1,51 @@
-# Build artifacts
-bin/
-obj/
-/dist/
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
 
-# IDE files
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Visual Studio
 .vs/
-.vscode/
+*.vsidx
+*.vspscc
+*.vsp
+*.vspx
+*.suo
 *.user
+*.userosscache
+*.sln.docstates
 
-# NuGet packages
-*.nupkg
-packages/
+# Rider
+.idea/
 
-# Temporary files
-*.tmp
-*.temp
-.tmp/
+# Visual Studio Code
+.vscode/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
