@@ -111,6 +111,33 @@ public class MmuTests
     }
 
     [Fact]
+    public void IF_RegisterSemantics_UpperBitsAlwaysSetOnRead()
+    {
+        var mmu = new Mmu();
+
+        // Test that no matter what we write, upper 3 bits are always set when reading
+        // This test ensures the semantic correctness of the IF register implementation
+
+        // Write each possible 5-bit value and verify upper 3 bits are always set
+        for (byte i = 0x00; i <= 0x1F; i++)
+        {
+            mmu.WriteByte(Mmu.IF, i);
+            var readValue = mmu.ReadByte(Mmu.IF);
+            var expectedValue = (byte)(i | 0xE0); // Lower 5 bits from write + upper 3 bits always set
+
+            Assert.Equal(expectedValue, readValue);
+            Assert.True((readValue & 0xE0) == 0xE0, $"Upper 3 bits should always be set. Value: 0x{readValue:X2}");
+        }
+
+        // Write values with upper bits set - should still only affect lower 5 bits
+        mmu.WriteByte(Mmu.IF, 0xFF); // All bits set
+        Assert.Equal(0xFF, mmu.ReadByte(Mmu.IF)); // Should read as 0x1F | 0xE0 = 0xFF
+
+        mmu.WriteByte(Mmu.IF, 0xE0); // Only upper bits set
+        Assert.Equal(0xE0, mmu.ReadByte(Mmu.IF)); // Should read as 0x00 | 0xE0 = 0xE0
+    }
+
+    [Fact]
     public void PPU_Registers_ReadDefaultValues()
     {
         var mmu = new Mmu();
@@ -284,6 +311,36 @@ public class MmuTests
 
         mmu.WriteByte(0xFFFF, 0x42); // Arbitrary value
         Assert.Equal(0x42, mmu.ReadByte(0xFFFF));
+    }
+
+    [Fact]
+    public void IE_RegisterSemantics_Full8BitReadWrite()
+    {
+        var mmu = new Mmu();
+
+        // Test that IE register allows full 8-bit read/write without any masking
+        // This test ensures the semantic correctness of the IE register implementation
+
+        // Test all 8 bits are readable and writable
+        for (int i = 0x00; i <= 0xFF; i++)
+        {
+            byte value = (byte)i;
+            mmu.WriteByte(0xFFFF, value);
+            var readValue = mmu.ReadByte(0xFFFF);
+
+            Assert.Equal(value, readValue);
+        }
+
+        // Test specific bit patterns
+        mmu.WriteByte(0xFFFF, 0xAA); // Alternating pattern
+        Assert.Equal(0xAA, mmu.ReadByte(0xFFFF));
+
+        mmu.WriteByte(0xFFFF, 0x55); // Inverse alternating pattern
+        Assert.Equal(0x55, mmu.ReadByte(0xFFFF));
+
+        // Verify no bits are forced to any particular value (unlike IF register)
+        mmu.WriteByte(0xFFFF, 0x00);
+        Assert.Equal(0x00, mmu.ReadByte(0xFFFF)); // Should remain 0x00, no forced bits
     }
 
     [Fact]

@@ -59,7 +59,7 @@ public sealed class Mmu
     private byte _tima = 0x00;
     private byte _tma = 0x00;
     private byte _tac = 0xF8;
-    private byte _if = 0xE1;
+    private byte _if = 0x01; // Only lower 5 bits stored; upper 3 bits added during read
     private byte _lcdc = 0x91;
     private byte _stat = 0x85;
     private byte _scy = 0x00;
@@ -95,7 +95,7 @@ public sealed class Mmu
         _tima = 0x00;
         _tma = 0x00;
         _tac = 0xF8;
-        _if = 0xE1;
+        _if = 0x01; // Only lower 5 bits stored; upper 3 bits added during read
         _lcdc = 0x91;
         _stat = 0x85;
         _scy = 0x00;
