@@ -23,11 +23,11 @@ public sealed class Mmu
     public const ushort EchoRamEnd = 0xFDFF;
     public const ushort OamStart = 0xFE00;
     public const ushort OamEnd = 0xFE9F;
-    public const ushort IoStart = 0xFF00;
+    public const ushort IoStart = IoRegs.P1_JOYP; // 0xFF00
     public const ushort IoEnd = 0xFF7F;
     public const ushort HramStart = 0xFF80;
     public const ushort HramEnd = 0xFFFE;
-    public const ushort InterruptEnable = 0xFFFF;
+    public const ushort InterruptEnable = IoRegs.IE; // 0xFFFF
 
     private readonly byte[] _mem = new byte[AddressSpaceSize];
 
