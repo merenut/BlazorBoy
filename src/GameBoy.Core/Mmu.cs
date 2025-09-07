@@ -31,25 +31,25 @@ public sealed class Mmu
     public const ushort HramEnd = 0xFFFE;
     public const ushort InterruptEnable = IoRegs.IE; // 0xFFFF
 
-    // I/O Register addresses
-    public const ushort JOYP = 0xFF00;
-    public const ushort DIV = 0xFF04;
-    public const ushort TIMA = 0xFF05;
-    public const ushort TMA = 0xFF06;
-    public const ushort TAC = 0xFF07;
-    public const ushort IF = 0xFF0F;
-    public const ushort LCDC = 0xFF40;
-    public const ushort STAT = 0xFF41;
-    public const ushort SCY = 0xFF42;
-    public const ushort SCX = 0xFF43;
-    public const ushort LY = 0xFF44;
-    public const ushort LYC = 0xFF45;
-    public const ushort DMA = 0xFF46;
-    public const ushort BGP = 0xFF47;
-    public const ushort OBP0 = 0xFF48;
-    public const ushort OBP1 = 0xFF49;
-    public const ushort WY = 0xFF4A;
-    public const ushort WX = 0xFF4B;
+    // I/O Register addresses - using IoRegs constants to avoid duplication
+    public const ushort JOYP = IoRegs.P1_JOYP;
+    public const ushort DIV = IoRegs.DIV;
+    public const ushort TIMA = IoRegs.TIMA;
+    public const ushort TMA = IoRegs.TMA;
+    public const ushort TAC = IoRegs.TAC;
+    public const ushort IF = IoRegs.IF;
+    public const ushort LCDC = IoRegs.LCDC;
+    public const ushort STAT = IoRegs.STAT;
+    public const ushort SCY = IoRegs.SCY;
+    public const ushort SCX = IoRegs.SCX;
+    public const ushort LY = IoRegs.LY;
+    public const ushort LYC = IoRegs.LYC;
+    public const ushort DMA = IoRegs.DMA;
+    public const ushort BGP = IoRegs.BGP;
+    public const ushort OBP0 = IoRegs.OBP0;
+    public const ushort OBP1 = IoRegs.OBP1;
+    public const ushort WY = IoRegs.WY;
+    public const ushort WX = IoRegs.WX;
 
     private readonly byte[] _mem = new byte[AddressSpaceSize];
 
