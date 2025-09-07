@@ -21,6 +21,7 @@ public sealed class Emulator
 
     public Ppu Ppu => _ppu;
     public Cpu Cpu => _cpu;
+    public Mmu Mmu => _mmu;
 
     public Emulator()
     {
@@ -29,6 +30,15 @@ public sealed class Emulator
         _ppu = new Ppu();
         _timer = new Timer();
         _intc = new InterruptController();
+    }
+
+    /// <summary>
+    /// Resets the emulator to post-BIOS state.
+    /// </summary>
+    public void Reset()
+    {
+        _mmu.Reset();
+        _cpu.Reset();
     }
 
     /// <summary>

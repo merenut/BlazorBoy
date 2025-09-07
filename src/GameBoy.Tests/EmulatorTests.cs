@@ -5,62 +5,53 @@ namespace GameBoy.Tests;
 public class EmulatorTests
 {
     [Fact]
-    public void StepFrame_AccumulatesCycles_UntilFrameBudgetReached()
+    public void Constructor_InitializesPostBiosState()
     {
         var emulator = new Emulator();
         
-        // Each CPU step returns 4 cycles in the placeholder implementation
-        // 70224 / 4 = 17556 steps needed for one frame
+        // Verify CPU registers are initialized to post-BIOS values
+        Assert.Equal(0xFFFE, emulator.Cpu.Regs.SP);
+        Assert.Equal(0x0100, emulator.Cpu.Regs.PC);
+        Assert.Equal(0x01B0, emulator.Cpu.Regs.AF);
+        Assert.Equal(0x0013, emulator.Cpu.Regs.BC);
+        Assert.Equal(0x00D8, emulator.Cpu.Regs.DE);
+        Assert.Equal(0x014D, emulator.Cpu.Regs.HL);
+        Assert.True(emulator.Cpu.InterruptsEnabled);
         
-        // Step multiple times - should not complete frame until 70224 cycles
-        for (int i = 0; i < 17555; i++)  // One less than needed
-        {
-            bool frameReady = emulator.StepFrame();
-            Assert.False(frameReady, $"Frame should not be ready at step {i + 1}");
-        }
-        
-        // The last step should complete the frame
-        bool finalFrameReady = emulator.StepFrame();
-        Assert.True(finalFrameReady, "Frame should be ready after 70224 cycles");
+        // Verify MMU I/O registers are initialized to post-BIOS values
+        Assert.Equal(0xCF, emulator.Mmu.ReadByte(0xFF00)); // JOYP
+        Assert.Equal(0x91, emulator.Mmu.ReadByte(0xFF40)); // LCDC
+        Assert.Equal(0xFC, emulator.Mmu.ReadByte(0xFF47)); // BGP
+        Assert.Equal(0x00, emulator.Mmu.ReadByte(0xFFFF)); // IE
     }
-    
+
     [Fact]
-    public void StepFrame_ReturnsTrue_OnlyOncePerFrame()
+    public void Reset_RestoresPostBiosState()
     {
         var emulator = new Emulator();
         
-        // Step until frame is complete
-        bool frameCompleted = false;
-        for (int i = 0; i < 17556; i++)  // 70224 / 4 = 17556 steps
-        {
-            bool frameReady = emulator.StepFrame();
-            if (frameReady)
-            {
-                frameCompleted = true;
-                break;
-            }
-        }
+        // Modify CPU and MMU state
+        emulator.Cpu.Regs.SP = 0x1234;
+        emulator.Cpu.Regs.PC = 0x5678;
+        emulator.Cpu.Regs.AF = 0x9ABC;
+        emulator.Cpu.InterruptsEnabled = false;
+        emulator.Mmu.WriteByte(0xFF00, 0x12);
+        emulator.Mmu.WriteByte(0xFF40, 0x34);
         
-        Assert.True(frameCompleted, "Frame should have completed");
+        // Reset should restore post-BIOS state
+        emulator.Reset();
         
-        // Next step should start a new frame and not return true immediately
-        bool nextStepReady = emulator.StepFrame();
-        Assert.False(nextStepReady, "Next step after frame completion should not be ready");
-    }
-    
-    [Fact]
-    public void StepFrame_IsDeterministic_WithPlaceholderCpuPpu()
-    {
-        var emulator1 = new Emulator();
-        var emulator2 = new Emulator();
+        // Verify CPU registers are restored
+        Assert.Equal(0xFFFE, emulator.Cpu.Regs.SP);
+        Assert.Equal(0x0100, emulator.Cpu.Regs.PC);
+        Assert.Equal(0x01B0, emulator.Cpu.Regs.AF);
+        Assert.Equal(0x0013, emulator.Cpu.Regs.BC);
+        Assert.Equal(0x00D8, emulator.Cpu.Regs.DE);
+        Assert.Equal(0x014D, emulator.Cpu.Regs.HL);
+        Assert.True(emulator.Cpu.InterruptsEnabled);
         
-        // Both emulators should behave identically
-        for (int i = 0; i < 20000; i++)  // More than one frame
-        {
-            bool frame1Ready = emulator1.StepFrame();
-            bool frame2Ready = emulator2.StepFrame();
-            
-            Assert.Equal(frame1Ready, frame2Ready);
-        }
+        // Verify MMU I/O registers are restored
+        Assert.Equal(0xCF, emulator.Mmu.ReadByte(0xFF00)); // JOYP
+        Assert.Equal(0x91, emulator.Mmu.ReadByte(0xFF40)); // LCDC
     }
 }

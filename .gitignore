@@ -11,83 +11,41 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
-[Ll]ogs/
 
-# Visual Studio 2015/2017 cache/options directory
-.vs/
-
-# .NET Core
+# .NET
 project.lock.json
 project.fragment.lock.json
 artifacts/
 
-# ASP.NET Scaffolding
-ScaffoldingReadMe.txt
+# Visual Studio
+.vs/
+*.vsidx
+*.vspscc
+*.vsp
+*.vspx
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-# Visual Studio Trace Files
-*.e2e
-
-# TFS 2012 Local Workspace
-$tf/
-
-# Guidance Automation Toolkit
-*.gpState
-
-# ReSharper
-_ReSharper*/
-*.[Rr]e[Ss]harper
-*.DotSettings.user
-
-# JetBrains Rider
+# Rider
 .idea/
-*.sln.iml
 
-# CodeRush personal settings
-.cr/personal
+# Visual Studio Code
+.vscode/
 
-# Python Tools for Visual Studio (PTVS)
-__pycache__/
-*.pyc
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-# Cake - Uncomment if you are using it
-# tools/**
-# !tools/packages.config
-
-# Tabs Studio
-*.tss
-
-# Telerik's JustMock configuration file
-*.jmconfig
-
-# BizTalk build output
-*.btp.cs
-*.btm.cs
-*.odx.cs
-*.xsd.cs
-
-# OpenCover UI analysis results
-OpenCover/
-
-# Azure Stream Analytics local run output
-ASALocalRun/
-
-# MSBuild Binary and Structured Log
-*.binlog
-
-# NVidia Nsight GPU debugger configuration file
-*.nvuser
-
-# MFractors (Xamarin productivity tool) working folder
-.mfractor/
-
-# Local History for Visual Studio Code
-.history/
-
-# BeatPulse healthcheck temp database
-healthchecksdb
-
-# Backup folder for Package Reference Convert tool in Visual Studio 2017
-MigrationBackup/
-
-# Ionide (cross platform F# VS Code tools) working folder
-.ionide/
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
