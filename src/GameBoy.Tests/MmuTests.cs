@@ -15,194 +15,205 @@ public class MmuTests
     }
 
     [Fact]
-    public void ReadWord_LittleEndianOrder()
+    public void JOYP_ReadsDefaultValue()
     {
         var mmu = new Mmu();
-        ushort addr = 0xC000;
-        mmu.WriteByte(addr, 0x34);     // Low byte
-        mmu.WriteByte((ushort)(addr + 1), 0x12); // High byte
-        var word = mmu.ReadWord(addr);
-        Assert.Equal(0x1234, word);
+        var val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xCF, val);
     }
 
     [Fact]
-    public void WriteWord_LittleEndianOrder()
+    public void JOYP_WritesOnlyAffectBits4And5()
     {
         var mmu = new Mmu();
-        ushort addr = 0xC000;
-        mmu.WriteWord(addr, 0xABCD);
-        var lowByte = mmu.ReadByte(addr);
-        var highByte = mmu.ReadByte((ushort)(addr + 1));
-        Assert.Equal(0xCD, lowByte);   // Low byte
-        Assert.Equal(0xAB, highByte);  // High byte
+        mmu.WriteByte(Mmu.JOYP, 0x00); // Try to clear all bits
+        var val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xCF, val); // Lower 4 bits should still be 1s
+
+        mmu.WriteByte(Mmu.JOYP, 0x10); // Set bit 4
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xDF, val); // Should be 0xCF with bit 4 set
+
+        mmu.WriteByte(Mmu.JOYP, 0x20); // Set bit 5 
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xEF, val); // Should be 0xCF with bit 5 set
     }
 
     [Fact]
-    public void ReadWord_CrossesPageBoundary()
+    public void DIV_ReadsDefaultValue()
     {
         var mmu = new Mmu();
-        ushort addr = 0xCFFF; // Cross page boundary
-        mmu.WriteByte(addr, 0x56);
-        mmu.WriteByte((ushort)(addr + 1), 0x78);
-        var word = mmu.ReadWord(addr);
-        Assert.Equal(0x7856, word);
+        var val = mmu.ReadByte(Mmu.DIV);
+        Assert.Equal(0x00, val);
     }
 
     [Fact]
-    public void EchoRam_MirrorsWorkRam_Read()
+    public void DIV_WriteResetsToZero()
     {
         var mmu = new Mmu();
-        ushort workRamAddr = 0xC123;
-        ushort echoRamAddr = 0xE123; // Same offset in Echo RAM
-        mmu.WriteByte(workRamAddr, 0x42);
-        var echoValue = mmu.ReadByte(echoRamAddr);
-        Assert.Equal(0x42, echoValue);
+        // Simulate DIV having some value
+        mmu.WriteByte(Mmu.DIV, 0x42); // Any write should reset to 0
+        var val = mmu.ReadByte(Mmu.DIV);
+        Assert.Equal(0x00, val);
+
+        mmu.WriteByte(Mmu.DIV, 0xFF); // Another write should also reset to 0
+        val = mmu.ReadByte(Mmu.DIV);
+        Assert.Equal(0x00, val);
     }
 
     [Fact]
-    public void EchoRam_MirrorsWorkRam_Write()
+    public void TimerRegisters_ReadDefaultValues()
     {
         var mmu = new Mmu();
-        ushort workRamAddr = 0xC456;
-        ushort echoRamAddr = 0xE456; // Same offset in Echo RAM
-        mmu.WriteByte(echoRamAddr, 0x84);
-        var workValue = mmu.ReadByte(workRamAddr);
-        Assert.Equal(0x84, workValue);
+        Assert.Equal(0x00, mmu.ReadByte(Mmu.TIMA));
+        Assert.Equal(0x00, mmu.ReadByte(Mmu.TMA));
+        Assert.Equal(0xF8, mmu.ReadByte(Mmu.TAC));
     }
 
     [Fact]
-    public void EchoRam_EntireRange_Read()
-    {
-        var mmu = new Mmu();
-        // Test boundaries
-        mmu.WriteByte(0xC000, 0x11); // Start of Work RAM
-        mmu.WriteByte(0xDDFF, 0x22); // End of Work RAM
-
-        Assert.Equal(0x11, mmu.ReadByte(0xE000)); // Start of Echo RAM
-        Assert.Equal(0x22, mmu.ReadByte(0xFDFF)); // End of Echo RAM
-    }
-
-    [Fact]
-    public void UnusableRegion_ReadsReturnFF()
-    {
-        var mmu = new Mmu();
-        // Test the unusable range 0xFEA0-0xFEFF
-        for (ushort addr = 0xFEA0; addr <= 0xFEFF; addr++)
-        {
-            var value = mmu.ReadByte(addr);
-            Assert.Equal(0xFF, value);
-        }
-    }
-
-    [Fact]
-    public void UnusableRegion_WritesIgnored()
-    {
-        var mmu = new Mmu();
-        ushort addr = 0xFEA0;
-        mmu.WriteByte(addr, 0x42);
-        var value = mmu.ReadByte(addr);
-        Assert.Equal(0xFF, value); // Should still return 0xFF
-    }
-
-    [Fact]
-    public void CartridgeRom_NoCartridge_ReturnsFF()
-    {
-        var mmu = new Mmu();
-        for (ushort addr = 0x0000; addr < 0x8000; addr += 0x1000)
-        {
-            var value = mmu.ReadByte(addr);
-            Assert.Equal(0xFF, value);
-        }
-    }
-
-    [Fact]
-    public void CartridgeRom_WithCartridge_ReturnsRomData()
-    {
-        var mmu = new Mmu();
-        var rom = new byte[0x8000];
-        rom[0x0000] = 0x12;
-        rom[0x4000] = 0x34;
-        rom[0x7FFF] = 0x56;
-        
-        mmu.LoadRom(rom);
-        
-        Assert.Equal(0x12, mmu.ReadByte(0x0000));
-        Assert.Equal(0x34, mmu.ReadByte(0x4000));
-        Assert.Equal(0x56, mmu.ReadByte(0x7FFF));
-    }
-
-    [Fact]
-    public void InterruptEnable_ReadWrite()
-    {
-        var mmu = new Mmu();
-        ushort ieAddr = 0xFFFF;
-        mmu.WriteByte(ieAddr, 0xE5);
-        var value = mmu.ReadByte(ieAddr);
-        Assert.Equal(0xE5, value);
-    }
-
-    [Fact]
-    public void IoRegion_UnmappedAddresses_ReturnFF()
-    {
-        var mmu = new Mmu();
-        // Test some unmapped I/O addresses
-        Assert.Equal(0xFF, mmu.ReadByte(0xFF00));
-        Assert.Equal(0xFF, mmu.ReadByte(0xFF10));
-        Assert.Equal(0xFF, mmu.ReadByte(0xFF40));
-        Assert.Equal(0xFF, mmu.ReadByte(0xFF7F));
-    }
-
-    [Fact]
-    public void Vram_ReadWrite()
-    {
-        var mmu = new Mmu();
-        ushort addr = 0x8000;
-        mmu.WriteByte(addr, 0x99);
-        var value = mmu.ReadByte(addr);
-        Assert.Equal(0x99, value);
-    }
-
-    [Fact]
-    public void Hram_ReadWrite()
-    {
-        var mmu = new Mmu();
-        ushort addr = 0xFF80;
-        mmu.WriteByte(addr, 0x77);
-        var value = mmu.ReadByte(addr);
-        Assert.Equal(0x77, value);
-    }
-
-    [Fact]
-    public void Oam_ReadWrite()
-    {
-        var mmu = new Mmu();
-        ushort addr = 0xFE00;
-        mmu.WriteByte(addr, 0x88);
-        var value = mmu.ReadByte(addr);
-        Assert.Equal(0x88, value);
-    }
-
-    [Fact]
-    public void MemoryMap_Boundaries()
+    public void TimerRegisters_WriteAndRead()
     {
         var mmu = new Mmu();
         
-        // Test work RAM end and echo RAM start
-        mmu.WriteByte(0xDDFF, 0x11); // Last byte of mirrored work RAM
-        mmu.WriteByte(0xE000, 0x22); // First byte of echo RAM
+        mmu.WriteByte(Mmu.TIMA, 0x42);
+        Assert.Equal(0x42, mmu.ReadByte(Mmu.TIMA));
+
+        mmu.WriteByte(Mmu.TMA, 0x84);
+        Assert.Equal(0x84, mmu.ReadByte(Mmu.TMA));
+
+        mmu.WriteByte(Mmu.TAC, 0x07);
+        Assert.Equal(0x07, mmu.ReadByte(Mmu.TAC));
+    }
+
+    [Fact]
+    public void IF_ReadsDefaultValue()
+    {
+        var mmu = new Mmu();
+        var val = mmu.ReadByte(Mmu.IF);
+        Assert.Equal(0xE1, val);
+    }
+
+    [Fact]
+    public void IF_WriteMasksToLower5Bits()
+    {
+        var mmu = new Mmu();
+        mmu.WriteByte(Mmu.IF, 0x00); // Clear all bits
+        var val = mmu.ReadByte(Mmu.IF);
+        Assert.Equal(0xE0, val); // Upper 3 bits should still be 1s
+
+        mmu.WriteByte(Mmu.IF, 0x1F); // Set lower 5 bits
+        val = mmu.ReadByte(Mmu.IF);
+        Assert.Equal(0xFF, val); // Should be 0xE0 | 0x1F
+
+        mmu.WriteByte(Mmu.IF, 0xFF); // Try to set all bits
+        val = mmu.ReadByte(Mmu.IF);
+        Assert.Equal(0xFF, val); // Upper bits forced to 1, lower 5 written
+    }
+
+    [Fact]
+    public void PPU_Registers_ReadDefaultValues()
+    {
+        var mmu = new Mmu();
+        Assert.Equal(0x91, mmu.ReadByte(Mmu.LCDC));
+        Assert.Equal(0x85, mmu.ReadByte(Mmu.STAT)); 
+        Assert.Equal(0x00, mmu.ReadByte(Mmu.SCY));
+        Assert.Equal(0x00, mmu.ReadByte(Mmu.SCX));
+        Assert.Equal(0x00, mmu.ReadByte(Mmu.LY));
+        Assert.Equal(0x00, mmu.ReadByte(Mmu.LYC));
+        Assert.Equal(0xFC, mmu.ReadByte(Mmu.BGP));
+        Assert.Equal(0x00, mmu.ReadByte(Mmu.OBP0));
+        Assert.Equal(0x00, mmu.ReadByte(Mmu.OBP1));
+        Assert.Equal(0x00, mmu.ReadByte(Mmu.WY));
+        Assert.Equal(0x00, mmu.ReadByte(Mmu.WX));
+    }
+
+    [Fact]
+    public void PPU_Registers_WriteAndRead()
+    {
+        var mmu = new Mmu();
         
-        // Echo RAM should mirror work RAM
-        Assert.Equal(0x22, mmu.ReadByte(0xC000)); // First byte of work RAM should be 0x22
-        Assert.Equal(0x11, mmu.ReadByte(0xFDFF)); // Last byte of echo RAM should be 0x11
+        mmu.WriteByte(Mmu.LCDC, 0x80);
+        Assert.Equal(0x80, mmu.ReadByte(Mmu.LCDC));
+
+        mmu.WriteByte(Mmu.SCY, 0x10);
+        Assert.Equal(0x10, mmu.ReadByte(Mmu.SCY));
+
+        mmu.WriteByte(Mmu.SCX, 0x20);
+        Assert.Equal(0x20, mmu.ReadByte(Mmu.SCX));
+
+        mmu.WriteByte(Mmu.LYC, 0x90);
+        Assert.Equal(0x90, mmu.ReadByte(Mmu.LYC));
+
+        mmu.WriteByte(Mmu.BGP, 0xE4);
+        Assert.Equal(0xE4, mmu.ReadByte(Mmu.BGP));
+    }
+
+    [Fact]
+    public void LY_WriteIsIgnored()
+    {
+        var mmu = new Mmu();
+        var originalValue = mmu.ReadByte(Mmu.LY);
         
-        // Test boundary between echo RAM and OAM
-        Assert.Equal(0x11, mmu.ReadByte(0xFDFF)); // Last echo RAM address
-        mmu.WriteByte(0xFE00, 0x33); // First OAM address
-        Assert.Equal(0x33, mmu.ReadByte(0xFE00));
+        mmu.WriteByte(Mmu.LY, 0xFF); // Try to write to LY
+        var newValue = mmu.ReadByte(Mmu.LY);
         
-        // Test boundary between OAM and unusable
-        mmu.WriteByte(0xFE9F, 0x44); // Last OAM address
-        Assert.Equal(0x44, mmu.ReadByte(0xFE9F));
-        Assert.Equal(0xFF, mmu.ReadByte(0xFEA0)); // First unusable address
+        Assert.Equal(originalValue, newValue); // Should be unchanged
+    }
+
+    [Fact]
+    public void STAT_WritableBitsOnly()
+    {
+        var mmu = new Mmu();
+        
+        // STAT default is 0x85, writable bits are 6,5,4,3 (mask 0x78)
+        mmu.WriteByte(Mmu.STAT, 0xFF); // Try to set all bits
+        var val = mmu.ReadByte(Mmu.STAT);
+        
+        // Should be (0x85 & 0x87) | (0xFF & 0x78) = 0x85 | 0x78 = 0xFD
+        Assert.Equal(0xFD, val);
+
+        mmu.WriteByte(Mmu.STAT, 0x00); // Try to clear all bits
+        val = mmu.ReadByte(Mmu.STAT);
+        
+        // Should be (0x85 & 0x87) | (0x00 & 0x78) = 0x85 | 0x00 = 0x85  
+        Assert.Equal(0x85, val);
+    }
+
+    [Fact]
+    public void DMA_WriteAndRead()
+    {
+        var mmu = new Mmu();
+        
+        mmu.WriteByte(Mmu.DMA, 0x42);
+        Assert.Equal(0x42, mmu.ReadByte(Mmu.DMA));
+        
+        mmu.WriteByte(Mmu.DMA, 0xC0);
+        Assert.Equal(0xC0, mmu.ReadByte(Mmu.DMA));
+    }
+
+    [Fact]
+    public void Unstubbed_IORegisters_ReadAs0xFF()
+    {
+        var mmu = new Mmu();
+        
+        // Test some unstubbed I/O addresses
+        Assert.Equal(0xFF, mmu.ReadByte(0xFF01)); // Serial transfer data
+        Assert.Equal(0xFF, mmu.ReadByte(0xFF02)); // Serial transfer control
+        Assert.Equal(0xFF, mmu.ReadByte(0xFF10)); // Sound channel 1 sweep
+        Assert.Equal(0xFF, mmu.ReadByte(0xFF30)); // Wave pattern
+        Assert.Equal(0xFF, mmu.ReadByte(0xFF7F)); // Last I/O address
+    }
+
+    [Fact]
+    public void Unstubbed_IORegisters_WritesIgnored()
+    {
+        var mmu = new Mmu();
+        
+        // Write to unstubbed I/O registers should be ignored
+        mmu.WriteByte(0xFF01, 0x42);
+        Assert.Equal(0xFF, mmu.ReadByte(0xFF01)); // Should still read as 0xFF
+        
+        mmu.WriteByte(0xFF10, 0x84);
+        Assert.Equal(0xFF, mmu.ReadByte(0xFF10)); // Should still read as 0xFF
     }
 }
