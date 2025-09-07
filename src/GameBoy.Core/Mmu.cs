@@ -88,6 +88,26 @@ public sealed class Mmu
     /// </summary>
     public void InitializePostBiosDefaults()
     {
+        // Reset I/O register private fields to default values
+        _joyp = 0xCF;
+        _div = 0x00;
+        _tima = 0x00;
+        _tma = 0x00;
+        _tac = 0xF8;
+        _if = 0xE1;
+        _lcdc = 0x91;
+        _stat = 0x85;
+        _scy = 0x00;
+        _scx = 0x00;
+        _ly = 0x00;
+        _lyc = 0x00;
+        _dma = 0xFF;
+        _bgp = 0xFC;
+        _obp0 = 0x00;
+        _obp1 = 0x00;
+        _wy = 0x00;
+        _wx = 0x00;
+
         // Joypad register (P1/JOYP)
         _mem[0xFF00] = 0xCF;
 
@@ -175,11 +195,10 @@ public sealed class Mmu
             return 0xFF;
         }
 
-        // I/O region (0xFF00-0xFF7F) - unmapped addresses return 0xFF
+        // I/O region (0xFF00-0xFF7F) - use proper I/O register handling
         if (addr >= IoStart && addr <= IoEnd)
         {
-            // For now, all I/O addresses return 0xFF since they're not implemented
-            return 0xFF;
+            return ReadIoRegister(addr);
         }
 
         // All other regions (VRAM, External RAM, Work RAM, OAM, HRAM, IE)
@@ -212,10 +231,10 @@ public sealed class Mmu
             return; // Ignore writes
         }
 
-        // I/O region (0xFF00-0xFF7F) - for now, just latch writes (store in memory)
+        // I/O region (0xFF00-0xFF7F) - use proper I/O register handling
         if (addr >= IoStart && addr <= IoEnd)
         {
-            _mem[addr] = value;
+            WriteIoRegister(addr, value);
             return;
         }
 

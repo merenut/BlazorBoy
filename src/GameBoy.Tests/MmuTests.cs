@@ -216,4 +216,122 @@ public class MmuTests
         mmu.WriteByte(0xFF10, 0x84);
         Assert.Equal(0xFF, mmu.ReadByte(0xFF10)); // Should still read as 0xFF
     }
+
+    [Fact]
+    public void EchoRam_MirrorsWorkRam()
+    {
+        var mmu = new Mmu();
+
+        // Write to Work RAM, read from Echo RAM
+        mmu.WriteByte(0xC000, 0x42);
+        Assert.Equal(0x42, mmu.ReadByte(0xE000)); // Echo RAM should mirror Work RAM
+
+        mmu.WriteByte(0xC100, 0x84);
+        Assert.Equal(0x84, mmu.ReadByte(0xE100)); // Test another address in the range
+
+        // Write to Echo RAM, read from Work RAM
+        mmu.WriteByte(0xE200, 0xAA);
+        Assert.Equal(0xAA, mmu.ReadByte(0xC200)); // Work RAM should mirror Echo RAM writes
+
+        mmu.WriteByte(0xFDFF, 0xBB); // Last address in Echo RAM range
+        Assert.Equal(0xBB, mmu.ReadByte(0xDDFF)); // Should mirror to last address in Work RAM range
+    }
+
+    [Fact]
+    public void UnusableRegion_ReadsReturn0xFF()
+    {
+        var mmu = new Mmu();
+
+        // Test various addresses in the unusable region (0xFEA0-0xFEFF)
+        Assert.Equal(0xFF, mmu.ReadByte(0xFEA0)); // First address in unusable region
+        Assert.Equal(0xFF, mmu.ReadByte(0xFEB0)); // Middle address
+        Assert.Equal(0xFF, mmu.ReadByte(0xFEFF)); // Last address in unusable region
+    }
+
+    [Fact]
+    public void UnusableRegion_WritesIgnored()
+    {
+        var mmu = new Mmu();
+
+        // Writes to unusable region should be ignored
+        mmu.WriteByte(0xFEA0, 0x42);
+        Assert.Equal(0xFF, mmu.ReadByte(0xFEA0)); // Should still read as 0xFF
+
+        mmu.WriteByte(0xFEB0, 0x84);
+        Assert.Equal(0xFF, mmu.ReadByte(0xFEB0)); // Should still read as 0xFF
+
+        mmu.WriteByte(0xFEFF, 0xAA);
+        Assert.Equal(0xFF, mmu.ReadByte(0xFEFF)); // Should still read as 0xFF
+    }
+
+    [Fact]
+    public void IE_Register_ReadWriteRoundTrip()
+    {
+        var mmu = new Mmu();
+
+        // IE register (0xFFFF) should allow full read/write without masking
+        mmu.WriteByte(0xFFFF, 0x00);
+        Assert.Equal(0x00, mmu.ReadByte(0xFFFF));
+
+        mmu.WriteByte(0xFFFF, 0xFF);
+        Assert.Equal(0xFF, mmu.ReadByte(0xFFFF));
+
+        mmu.WriteByte(0xFFFF, 0x1F); // Only lower 5 bits set
+        Assert.Equal(0x1F, mmu.ReadByte(0xFFFF));
+
+        mmu.WriteByte(0xFFFF, 0xE0); // Only upper 3 bits set
+        Assert.Equal(0xE0, mmu.ReadByte(0xFFFF));
+
+        mmu.WriteByte(0xFFFF, 0x42); // Arbitrary value
+        Assert.Equal(0x42, mmu.ReadByte(0xFFFF));
+    }
+
+    [Fact]
+    public void ReadWord_LittleEndian()
+    {
+        var mmu = new Mmu();
+
+        // Write two bytes and read as 16-bit word
+        mmu.WriteByte(0xC000, 0x34); // Low byte
+        mmu.WriteByte(0xC001, 0x12); // High byte
+
+        ushort word = mmu.ReadWord(0xC000);
+        Assert.Equal(0x1234, word); // Should be little-endian: 0x12 << 8 | 0x34
+    }
+
+    [Fact]
+    public void WriteWord_LittleEndian()
+    {
+        var mmu = new Mmu();
+
+        // Write 16-bit word and read individual bytes
+        mmu.WriteWord(0xC000, 0x5678);
+
+        Assert.Equal(0x78, mmu.ReadByte(0xC000)); // Low byte should be 0x78
+        Assert.Equal(0x56, mmu.ReadByte(0xC001)); // High byte should be 0x56
+    }
+
+    [Fact]
+    public void ReadWriteWord_CrossesRegionBoundaries()
+    {
+        var mmu = new Mmu();
+
+        // Test word operations across normal memory boundaries
+        mmu.WriteWord(0xC100, 0xABCD); // Simple case in Work RAM
+
+        Assert.Equal(0xCD, mmu.ReadByte(0xC100)); // Low byte
+        Assert.Equal(0xAB, mmu.ReadByte(0xC101)); // High byte
+
+        // Read the word back
+        ushort word = mmu.ReadWord(0xC100);
+        Assert.Equal(0xABCD, word);
+
+        // Test that the Echo RAM correctly mirrors the same location
+        Assert.Equal(0xCD, mmu.ReadByte(0xE100)); // Echo RAM mirror (0xC100 + 0x2000)
+        Assert.Equal(0xAB, mmu.ReadByte(0xE101)); // Echo RAM mirror (0xC101 + 0x2000)
+
+        // Read word from Echo RAM should match
+        ushort echoWord = mmu.ReadWord(0xE100);
+        Assert.Equal(0xABCD, echoWord);
+    }
 }
