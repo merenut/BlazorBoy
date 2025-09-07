@@ -74,7 +74,7 @@ public class MmuTests
     public void TimerRegisters_WriteAndRead()
     {
         var mmu = new Mmu();
-        
+
         mmu.WriteByte(Mmu.TIMA, 0x42);
         Assert.Equal(0x42, mmu.ReadByte(Mmu.TIMA));
 
@@ -115,7 +115,7 @@ public class MmuTests
     {
         var mmu = new Mmu();
         Assert.Equal(0x91, mmu.ReadByte(Mmu.LCDC));
-        Assert.Equal(0x85, mmu.ReadByte(Mmu.STAT)); 
+        Assert.Equal(0x85, mmu.ReadByte(Mmu.STAT));
         Assert.Equal(0x00, mmu.ReadByte(Mmu.SCY));
         Assert.Equal(0x00, mmu.ReadByte(Mmu.SCX));
         Assert.Equal(0x00, mmu.ReadByte(Mmu.LY));
@@ -131,7 +131,7 @@ public class MmuTests
     public void PPU_Registers_WriteAndRead()
     {
         var mmu = new Mmu();
-        
+
         mmu.WriteByte(Mmu.LCDC, 0x80);
         Assert.Equal(0x80, mmu.ReadByte(Mmu.LCDC));
 
@@ -153,10 +153,10 @@ public class MmuTests
     {
         var mmu = new Mmu();
         var originalValue = mmu.ReadByte(Mmu.LY);
-        
+
         mmu.WriteByte(Mmu.LY, 0xFF); // Try to write to LY
         var newValue = mmu.ReadByte(Mmu.LY);
-        
+
         Assert.Equal(originalValue, newValue); // Should be unchanged
     }
 
@@ -164,17 +164,17 @@ public class MmuTests
     public void STAT_WritableBitsOnly()
     {
         var mmu = new Mmu();
-        
+
         // STAT default is 0x85, writable bits are 6,5,4,3 (mask 0x78)
         mmu.WriteByte(Mmu.STAT, 0xFF); // Try to set all bits
         var val = mmu.ReadByte(Mmu.STAT);
-        
+
         // Should be (0x85 & 0x87) | (0xFF & 0x78) = 0x85 | 0x78 = 0xFD
         Assert.Equal(0xFD, val);
 
         mmu.WriteByte(Mmu.STAT, 0x00); // Try to clear all bits
         val = mmu.ReadByte(Mmu.STAT);
-        
+
         // Should be (0x85 & 0x87) | (0x00 & 0x78) = 0x85 | 0x00 = 0x85  
         Assert.Equal(0x85, val);
     }
@@ -183,10 +183,10 @@ public class MmuTests
     public void DMA_WriteAndRead()
     {
         var mmu = new Mmu();
-        
+
         mmu.WriteByte(Mmu.DMA, 0x42);
         Assert.Equal(0x42, mmu.ReadByte(Mmu.DMA));
-        
+
         mmu.WriteByte(Mmu.DMA, 0xC0);
         Assert.Equal(0xC0, mmu.ReadByte(Mmu.DMA));
     }
@@ -195,7 +195,7 @@ public class MmuTests
     public void Unstubbed_IORegisters_ReadAs0xFF()
     {
         var mmu = new Mmu();
-        
+
         // Test some unstubbed I/O addresses
         Assert.Equal(0xFF, mmu.ReadByte(0xFF01)); // Serial transfer data
         Assert.Equal(0xFF, mmu.ReadByte(0xFF02)); // Serial transfer control
@@ -208,11 +208,11 @@ public class MmuTests
     public void Unstubbed_IORegisters_WritesIgnored()
     {
         var mmu = new Mmu();
-        
+
         // Write to unstubbed I/O registers should be ignored
         mmu.WriteByte(0xFF01, 0x42);
         Assert.Equal(0xFF, mmu.ReadByte(0xFF01)); // Should still read as 0xFF
-        
+
         mmu.WriteByte(0xFF10, 0x84);
         Assert.Equal(0xFF, mmu.ReadByte(0xFF10)); // Should still read as 0xFF
     }

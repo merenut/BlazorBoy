@@ -24,7 +24,7 @@ public class IoRegsTests
         Assert.True(IoRegs.P1_JOYP >= 0xFF00 && IoRegs.P1_JOYP <= 0xFF7F);
         Assert.True(IoRegs.LCDC >= 0xFF00 && IoRegs.LCDC <= 0xFF7F);
         Assert.True(IoRegs.TAC >= 0xFF00 && IoRegs.TAC <= 0xFF7F);
-        
+
         // IE is a special case outside the I/O range
         Assert.Equal(0xFFFF, IoRegs.IE);
     }

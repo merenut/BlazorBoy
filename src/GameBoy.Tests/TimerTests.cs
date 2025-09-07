@@ -7,7 +7,7 @@ public class TimerTests
     [Fact]
     public void Step_DoesNotThrow()
     {
-    var timer = new GameBoy.Core.Timer();
+        var timer = new GameBoy.Core.Timer();
         timer.Step(4);
     }
 }
