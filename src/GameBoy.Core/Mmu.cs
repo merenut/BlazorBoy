@@ -59,7 +59,6 @@ public sealed class Mmu
     private byte _tima = 0x00;
     private byte _tma = 0x00;
     private byte _tac = 0xF8;
-    private byte _if = 0x01; // Only lower 5 bits stored; upper 3 bits added during read
     private byte _lcdc = 0x91;
     private byte _stat = 0x85;
     private byte _scy = 0x00;
@@ -74,6 +73,11 @@ public sealed class Mmu
     private byte _wx = 0x00;
 
     public Cartridge? Cartridge { get; set; }
+
+    /// <summary>
+    /// The interrupt controller that manages IF and IE registers.
+    /// </summary>
+    public InterruptController InterruptController { get; } = new();
 
     /// <summary>
     /// Initializes a new instance of the MMU and sets post-BIOS I/O register defaults.
@@ -95,7 +99,6 @@ public sealed class Mmu
         _tima = 0x00;
         _tma = 0x00;
         _tac = 0xF8;
-        _if = 0x01; // Only lower 5 bits stored; upper 3 bits added during read
         _lcdc = 0x91;
         _stat = 0x85;
         _scy = 0x00;
@@ -109,8 +112,8 @@ public sealed class Mmu
         _wy = 0x00;
         _wx = 0x00;
 
-        // IE register (outside I/O range) - accessed via direct memory
-        _mem[0xFFFF] = 0x00; // IE - Interrupt enable
+        // Initialize interrupt controller to post-BIOS defaults
+        InterruptController.InitializePostBiosDefaults();
 
         // Note: Serial transfer and sound registers are not implemented in ReadIoRegister
         // and therefore read as 0xFF. Their defaults are not set here to avoid confusion.
@@ -169,7 +172,13 @@ public sealed class Mmu
             return ReadIoRegister(addr);
         }
 
-        // All other regions (VRAM, Work RAM, OAM, HRAM, IE)
+        // IE register (0xFFFF) - delegate to InterruptController
+        if (addr == InterruptEnable)
+        {
+            return InterruptController.IE;
+        }
+
+        // All other regions (VRAM, Work RAM, OAM, HRAM)
         return _mem[addr];
     }
 
@@ -213,7 +222,14 @@ public sealed class Mmu
             return;
         }
 
-        // All other regions (VRAM, Work RAM, OAM, HRAM, IE)
+        // IE register (0xFFFF) - delegate to InterruptController
+        if (addr == InterruptEnable)
+        {
+            InterruptController.SetIE(value);
+            return;
+        }
+
+        // All other regions (VRAM, Work RAM, OAM, HRAM)
         _mem[addr] = value;
     }
 
@@ -294,7 +310,7 @@ public sealed class Mmu
             TIMA => _tima,
             TMA => _tma,
             TAC => _tac,
-            IF => (byte)(_if | 0xE0), // Upper 3 bits always read as 1s
+            IF => InterruptController.IF, // Delegate to InterruptController
             LCDC => _lcdc,
             STAT => _stat,
             SCY => _scy,
@@ -336,8 +352,8 @@ public sealed class Mmu
                 _tac = value;
                 break;
             case IF:
-                // Only lower 5 bits are writable
-                _if = (byte)(value & 0x1F);
+                // Delegate to InterruptController
+                InterruptController.SetIF(value);
                 break;
             case LCDC:
                 _lcdc = value;
