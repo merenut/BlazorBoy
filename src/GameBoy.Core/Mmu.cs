@@ -113,7 +113,7 @@ public sealed class Mmu
 
         // Initialize interrupt controller to post-BIOS defaults
         InterruptController.InitializePostBiosDefaults();
-        
+
         // Initialize timer to post-BIOS defaults if available
         Timer?.Reset();
 

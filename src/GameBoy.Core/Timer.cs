@@ -7,15 +7,15 @@ namespace GameBoy.Core;
 public sealed class Timer
 {
     private readonly InterruptController _interruptController;
-    
+
     // 16-bit internal counter that increments at CPU clock speed (4.194304 MHz)
     private ushort _internalCounter = 0;
-    
+
     // Timer registers - these coordinate with MMU
     private byte _tima = 0x00;  // Timer counter (0xFF05)
     private byte _tma = 0x00;   // Timer modulo (0xFF06) 
     private byte _tac = 0xF8;   // Timer control (0xFF07)
-    
+
     // Cycle counters for TIMA frequency tracking
     private int _timaCounter = 0;
 
@@ -106,16 +106,16 @@ public sealed class Timer
         if ((_tac & 0x04) != 0)
         {
             _timaCounter += cycles;
-            
+
             int timaFrequency = GetTIMAFrequency();
-            
+
             while (_timaCounter >= timaFrequency)
             {
                 _timaCounter -= timaFrequency;
-                
+
                 // Increment TIMA
                 _tima++;
-                
+
                 // Check for overflow
                 if (_tima == 0)
                 {

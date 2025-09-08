@@ -111,6 +111,16 @@ public sealed class InterruptController
     }
 
     /// <summary>
+    /// Checks if any interrupt flags are set in IF register.
+    /// Used for HALT wake-up logic - HALT wakes on any IF flag regardless of IE.
+    /// </summary>
+    /// <returns>True if any interrupt flags are set, false otherwise.</returns>
+    public bool HasAnyInterruptFlags()
+    {
+        return (_if & 0x1F) != 0; // Check lower 5 bits for any interrupt flags
+    }
+
+    /// <summary>
     /// Services an interrupt by clearing its IF bit and returning the interrupt vector address.
     /// Note: Actual CPU state manipulation (pushing PC, setting PC to vector) should be done by the CPU.
     /// </summary>
@@ -139,7 +149,7 @@ public sealed class InterruptController
     /// </summary>
     public void InitializePostBiosDefaults()
     {
-        _if = 0x01; // Only VBlank bit set initially
+        _if = 0x01; // VBlank flag set initially (post-BIOS state)
         _ie = 0x00; // No interrupts enabled initially
     }
 }

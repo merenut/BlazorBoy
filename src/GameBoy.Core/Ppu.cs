@@ -32,7 +32,7 @@ public sealed class Ppu
     public bool Step(int cycles)
     {
         _cycleCounter += cycles;
-        
+
         // Placeholder: produce a simple pattern to prove rendering.
         for (int y = 0; y < ScreenHeight; y++)
         {

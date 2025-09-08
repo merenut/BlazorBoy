@@ -317,7 +317,7 @@ public class InterruptServiceRoutineTests
 
         // Execute HALT - bug should trigger since IME=0 and IE&IF≠0
         cpu.Step();
-        
+
         // CPU should not be halted due to bug
         Assert.False(cpu.IsHalted);
         Assert.Equal(0xC001, cpu.Regs.PC); // Should be at INC A instruction
@@ -350,7 +350,7 @@ public class InterruptServiceRoutineTests
 
         // Execute HALT - should service interrupt normally, no bug
         int cycles = cpu.Step();
-        
+
         Assert.False(cpu.IsHalted); // Woke up to service interrupt
         Assert.Equal(20, cycles); // Interrupt handling cycles
         Assert.Equal(0x0040, cpu.Regs.PC); // Should jump to VBlank vector
@@ -374,7 +374,7 @@ public class InterruptServiceRoutineTests
 
         // Execute HALT - should halt normally, no bug
         cpu.Step();
-        
+
         Assert.True(cpu.IsHalted); // Should be properly halted
         Assert.Equal(0xC001, cpu.Regs.PC); // PC should advance past HALT
     }

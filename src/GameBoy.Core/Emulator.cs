@@ -36,7 +36,7 @@ public sealed class Emulator
         _timer = new Timer(_mmu.InterruptController);
         _serial = new Serial(_mmu.InterruptController);
         Joypad = new Joypad(_mmu.InterruptController);
-        
+
         // Connect timer to MMU for I/O register coordination
         _mmu.Timer = _timer;
     }

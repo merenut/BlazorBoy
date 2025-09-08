@@ -304,7 +304,7 @@ public class InterruptControllerTests
         Assert.Equal(InterruptType.LCDStat, interruptType); // Bit 1 is highest priority in overlap
     }
 
-    [Fact]  
+    [Fact]
     public void IF_IE_PartialMaskingScenarios()
     {
         var controller = new InterruptController();
