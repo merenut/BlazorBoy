@@ -60,6 +60,12 @@ public abstract class Cartridge
             MbcType.Mbc3 => new Mbc3(rom, header),
             MbcType.Mbc5 => new Mbc5(rom, header),
             MbcType.Mbc2 => throw new NotSupportedException($"MBC2 is not yet supported (cartridge type: 0x{header.CartridgeType:X2})"),
+            MbcType.Mbc4 => throw new NotSupportedException($"MBC4 is not yet supported (cartridge type: 0x{header.CartridgeType:X2})"),
+            MbcType.Mbc6 => throw new NotSupportedException($"MBC6 is not yet supported (cartridge type: 0x{header.CartridgeType:X2})"),
+            MbcType.Mbc7 => throw new NotSupportedException($"MBC7 is not yet supported (cartridge type: 0x{header.CartridgeType:X2})"),
+            MbcType.HuC1 => throw new NotSupportedException($"HuC1 is not yet supported (cartridge type: 0x{header.CartridgeType:X2})"),
+            MbcType.HuC3 => throw new NotSupportedException($"HuC3 is not yet supported (cartridge type: 0x{header.CartridgeType:X2})"),
+            MbcType.Tama5 => throw new NotSupportedException($"TAMA5 is not yet supported (cartridge type: 0x{header.CartridgeType:X2})"),
             MbcType.Unknown => throw new NotSupportedException($"Unknown or unsupported cartridge type: 0x{header.CartridgeType:X2}"),
             _ => throw new NotSupportedException($"Unsupported MBC type: {mbcType}")
         };

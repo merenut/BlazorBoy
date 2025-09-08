@@ -206,6 +206,23 @@ public class EmulatorMbcIntegrationTests
         Assert.Contains("MBC2 is not yet supported", ex.Message);
     }
 
+    [Theory]
+    [InlineData(0x15, "MBC4")] // MBC4
+    [InlineData(0x20, "MBC6")] // MBC6
+    [InlineData(0x22, "MBC7")] // MBC7
+    [InlineData(0xFF, "HuC1")] // HuC1
+    [InlineData(0xFE, "HuC3")] // HuC3
+    [InlineData(0xFD, "TAMA5")] // TAMA5
+    public void Emulator_LoadRom_AllUnsupportedMbcTypes_ThrowsNotSupportedException(byte cartridgeType, string expectedMbcName)
+    {
+        var emulator = new Emulator();
+        var rom = CreateRom(cartridgeType, 0x01, 0x02);
+
+        var ex = Assert.Throws<NotSupportedException>(() => emulator.LoadRom(rom));
+        Assert.Contains($"{expectedMbcName} is not yet supported", ex.Message);
+        Assert.Contains($"0x{cartridgeType:X2}", ex.Message);
+    }
+
     [Fact]
     public void Emulator_BatteryRam_NoCartridge_ReturnsNull()
     {
