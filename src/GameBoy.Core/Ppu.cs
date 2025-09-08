@@ -123,14 +123,14 @@ public sealed class Ppu
     /// </summary>
     public bool Step(int cycles)
     {
+        // Update register cache from MMU if available
+        RefreshRegisterCache();
+
         if (!_lcdc.LcdEnable)
         {
             // LCD is disabled - just return without processing
             return false;
         }
-
-        // Update register cache from MMU if available
-        RefreshRegisterCache();
 
         int remainingCycles = cycles;
         bool frameCompleted = false;

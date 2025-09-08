@@ -146,8 +146,15 @@ public readonly struct Sprite
     /// </summary>
     public bool IsVisibleHorizontally => ScreenX > -8 && ScreenX < 160;
 
-    public override string ToString() =>
-        $"Sprite: Y={Y}, X={X}, Tile=0x{TileIndex:X2}, Attr=0x{Attributes:X2} " +
-        $"(Pos: {ScreenX},{ScreenY}, Priority: {(BehindBackground ? "Behind" : "Above")}, " +
-        $"Flip: {(FlipX ? "X" : "")}{(FlipY ? "Y" : "")}, Palette: OBP{(UseObp1 ? "1" : "0")})";
+    public override string ToString()
+    {
+        string flips = "";
+        if (FlipX) flips += "X";
+        if (FlipY) flips += "Y";
+        string flipText = flips.Length > 0 ? $", Flip: {flips}" : "";
+
+        return $"Sprite: Y={Y}, X={X}, Tile=0x{TileIndex:X2}, Attr=0x{Attributes:X2} " +
+               $"(Pos: {ScreenX},{ScreenY}, Priority: {(BehindBackground ? "Behind" : "Above")}" +
+               $"{flipText}, Palette: OBP{(UseObp1 ? "1" : "0")})";
+    }
 }
