@@ -55,10 +55,7 @@ public sealed class Mmu
 
     // I/O Register storage - post-BIOS defaults
     private byte _joyp = 0xCF;
-    private byte _div = 0x00;
-    private byte _tima = 0x00;
-    private byte _tma = 0x00;
-    private byte _tac = 0xF8;
+    // Timer registers are managed by Timer instance (DIV, TIMA, TMA, TAC)
     private byte _lcdc = 0x91;
     private byte _stat = 0x85;
     private byte _scy = 0x00;
@@ -80,6 +77,11 @@ public sealed class Mmu
     public InterruptController InterruptController { get; } = new();
 
     /// <summary>
+    /// The timer unit that manages DIV, TIMA, TMA, and TAC registers.
+    /// </summary>
+    public Timer? Timer { get; set; }
+
+    /// <summary>
     /// Initializes a new instance of the MMU and sets post-BIOS I/O register defaults.
     /// </summary>
     public Mmu()
@@ -95,10 +97,7 @@ public sealed class Mmu
         // Reset I/O register private fields to default values
         // These registers have backing fields and are accessed via ReadIoRegister/WriteIoRegister
         _joyp = 0xCF;
-        _div = 0x00;
-        _tima = 0x00;
-        _tma = 0x00;
-        _tac = 0xF8;
+        // Timer registers (DIV, TIMA, TMA, TAC) are managed by Timer instance
         _lcdc = 0x91;
         _stat = 0x85;
         _scy = 0x00;
@@ -114,6 +113,9 @@ public sealed class Mmu
 
         // Initialize interrupt controller to post-BIOS defaults
         InterruptController.InitializePostBiosDefaults();
+        
+        // Initialize timer to post-BIOS defaults if available
+        Timer?.Reset();
 
         // Note: Serial transfer and sound registers are not implemented in ReadIoRegister
         // and therefore read as 0xFF. Their defaults are not set here to avoid confusion.
@@ -306,10 +308,10 @@ public sealed class Mmu
         return addr switch
         {
             JOYP => (byte)(_joyp | 0x0F), // Lower 4 bits always read as 1s
-            DIV => _div,
-            TIMA => _tima,
-            TMA => _tma,
-            TAC => _tac,
+            DIV => Timer?.DIV ?? 0x00,
+            TIMA => Timer?.TIMA ?? 0x00,
+            TMA => Timer?.TMA ?? 0x00,
+            TAC => Timer?.TAC ?? 0xF8,
             IF => InterruptController.IF, // Delegate to InterruptController
             LCDC => _lcdc,
             STAT => _stat,
@@ -340,16 +342,16 @@ public sealed class Mmu
                 break;
             case DIV:
                 // Writing any value resets DIV to 0x00
-                _div = 0x00;
+                Timer?.ResetDivider();
                 break;
             case TIMA:
-                _tima = value;
+                Timer?.SetTIMA(value);
                 break;
             case TMA:
-                _tma = value;
+                Timer?.SetTMA(value);
                 break;
             case TAC:
-                _tac = value;
+                Timer?.SetTAC(value);
                 break;
             case IF:
                 // Delegate to InterruptController
