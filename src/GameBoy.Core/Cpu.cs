@@ -139,15 +139,81 @@ public sealed class Cpu
     /// </summary>
     internal void AddToA(byte value)
     {
-        int result = Regs.A + value;
+        var result = Alu.Add(Regs.A, value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
 
-        // Set flags
-        bool zero = (result & 0xFF) == 0;
-        bool carry = result > 0xFF;
-        bool halfCarry = (Regs.A & 0x0F) + (value & 0x0F) > 0x0F;
+    /// <summary>
+    /// Adds a value plus carry to register A and sets flags accordingly.
+    /// </summary>
+    internal void AdcToA(byte value)
+    {
+        bool carryIn = (Regs.F & 0x10) != 0; // Extract carry flag
+        var result = Alu.AddWithCarry(Regs.A, value, carryIn);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
 
-        SetFlags(zero, false, halfCarry, carry);
-        Regs.A = (byte)(result & 0xFF);
+    /// <summary>
+    /// Subtracts a value from register A and sets flags accordingly.
+    /// </summary>
+    internal void SubFromA(byte value)
+    {
+        var result = Alu.Subtract(Regs.A, value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Subtracts a value and carry from register A and sets flags accordingly.
+    /// </summary>
+    internal void SbcFromA(byte value)
+    {
+        bool carryIn = (Regs.F & 0x10) != 0; // Extract carry flag
+        var result = Alu.SubtractWithCarry(Regs.A, value, carryIn);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Performs bitwise AND with register A and sets flags accordingly.
+    /// </summary>
+    internal void AndWithA(byte value)
+    {
+        var result = Alu.And(Regs.A, value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Performs bitwise OR with register A and sets flags accordingly.
+    /// </summary>
+    internal void OrWithA(byte value)
+    {
+        var result = Alu.Or(Regs.A, value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Performs bitwise XOR with register A and sets flags accordingly.
+    /// </summary>
+    internal void XorWithA(byte value)
+    {
+        var result = Alu.Xor(Regs.A, value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Compares register A with a value and sets flags accordingly (CP operation).
+    /// </summary>
+    internal void CompareA(byte value)
+    {
+        var result = Alu.Compare(Regs.A, value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        // Note: A register is not modified in CP operation
     }
 
     /// <summary>
