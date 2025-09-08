@@ -74,6 +74,8 @@ public class MmuTests
     public void TimerRegisters_WriteAndRead()
     {
         var mmu = new Mmu();
+        var timer = new GameBoy.Core.Timer(mmu.InterruptController);
+        mmu.Timer = timer; // Connect timer to MMU
 
         mmu.WriteByte(Mmu.TIMA, 0x42);
         Assert.Equal(0x42, mmu.ReadByte(Mmu.TIMA));

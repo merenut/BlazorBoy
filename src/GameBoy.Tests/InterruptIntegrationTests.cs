@@ -28,8 +28,12 @@ public class InterruptIntegrationTests
         interruptController.SetIF(0x00); // Clear all interrupt flags
         var timer = new GameBoy.Core.Timer(interruptController);
 
-        // Step the timer until it triggers an interrupt (1024 cycles)
-        timer.Step(1024);
+        // Enable timer with fast frequency and set TIMA near overflow
+        timer.SetTAC(0x05); // Timer enabled, 16 cycles per increment
+        timer.SetTIMA(0xFF); // Set to overflow on next increment
+
+        // Step the timer to trigger overflow
+        timer.Step(16);
 
         // Verify Timer interrupt was requested (bit 2)
         Assert.Equal(0xE4, interruptController.IF); // 0x04 (Timer) | 0xE0 (upper bits)
@@ -144,13 +148,18 @@ public class InterruptIntegrationTests
         interruptController.SetIF(0x00); // Clear all interrupt flags
         var timer = new GameBoy.Core.Timer(interruptController);
 
+        // Enable timer with fast frequency and set TIMA near overflow
+        timer.SetTAC(0x05); // Timer enabled, 16 cycles per increment
+        timer.SetTIMA(0xFF); // Set to overflow on next increment
+
         // Step exactly enough to trigger first interrupt
-        timer.Step(1024);
+        timer.Step(16);
         Assert.Equal(0xE4, interruptController.IF); // First interrupt
 
-        // Clear and step again
+        // Clear and step again to trigger second overflow
         interruptController.SetIF(0x00);
-        timer.Step(1024);
+        timer.SetTIMA(0xFF); // Reset to near overflow again
+        timer.Step(16);
         Assert.Equal(0xE4, interruptController.IF); // Second interrupt
     }
 
@@ -184,7 +193,7 @@ public class InterruptIntegrationTests
     public void ComplexEmulatorScenario_MultipleInterruptSources()
     {
         var emulator = new Emulator();
-        
+
         // Clear all interrupts and enable specific ones
         emulator.Mmu.InterruptController.SetIF(0x00);
         emulator.Mmu.InterruptController.SetIE(0x15); // Enable VBlank, Timer, Joypad
@@ -240,6 +249,13 @@ public class InterruptIntegrationTests
     {
         var emulator = new Emulator();
 
+        // Clear all interrupts initially to allow HALT to work
+        emulator.Mmu.InterruptController.SetIF(0x00);
+        emulator.Mmu.InterruptController.SetIE(0x00);
+
+        // Ensure timer is disabled to prevent timer interrupts
+        emulator.Timer.SetTAC(0xF8); // Timer disabled
+
         // Setup HALT instruction
         emulator.Mmu.WriteByte(0x1000, 0x76); // HALT at 0x1000
         emulator.Cpu.Regs.PC = 0x1000;
@@ -249,9 +265,8 @@ public class InterruptIntegrationTests
         emulator.StepFrame();
         Assert.True(emulator.Cpu.IsHalted);
 
-        // Clear all interrupts initially
-        emulator.Mmu.InterruptController.SetIF(0x00);
-        emulator.Mmu.InterruptController.SetIE(0x01); // Enable VBlank
+        // Enable VBlank interrupt for wake-up
+        emulator.Mmu.InterruptController.SetIE(0x01); // Enable VBlank only
 
         // Step emulator until VBlank is triggered by PPU
         for (int i = 0; i < 1000 && emulator.Cpu.IsHalted; i++)

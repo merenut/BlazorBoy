@@ -124,6 +124,8 @@ public class IoRegionWiringTests
     public void StubbedIoRegisters_PreserveBehavior()
     {
         var mmu = new Mmu();
+        var timer = new GameBoy.Core.Timer(mmu.InterruptController);
+        mmu.Timer = timer; // Connect timer to MMU
 
         // Test that all stubbed registers maintain their expected behavior
 
