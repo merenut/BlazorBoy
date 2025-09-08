@@ -25,11 +25,43 @@ public abstract class Cartridge
     public abstract void WriteRom(ushort addr, byte value);
 
     /// <summary>
+    /// Reads a byte from external RAM address space (0xA000-0xBFFF).
+    /// </summary>
+    public virtual byte ReadExternalRam(ushort addr)
+    {
+        // Default implementation for cartridges without external RAM
+        return 0xFF;
+    }
+
+    /// <summary>
+    /// Writes a byte to external RAM address space (0xA000-0xBFFF).
+    /// </summary>
+    public virtual void WriteExternalRam(ushort addr, byte value)
+    {
+        // Default implementation for cartridges without external RAM
+        // Writes are ignored
+    }
+
+    /// <summary>
     /// Detects and creates the correct cartridge controller (MBC).
     /// </summary>
     public static Cartridge Detect(byte[] rom)
     {
-        // Very simple: use MBC0 for now.
-        return new Mbc0(rom);
+        if (rom == null || rom.Length < 0x0150)
+            throw new ArgumentException("ROM too small to contain valid header", nameof(rom));
+
+        var header = CartridgeHeader.Parse(rom);
+        var mbcType = header.GetMbcType();
+
+        return mbcType switch
+        {
+            MbcType.None => new Mbc0(rom),
+            MbcType.Mbc1 => new Mbc1(rom, header),
+            MbcType.Mbc3 => new Mbc3(rom, header),
+            MbcType.Mbc5 => new Mbc5(rom, header),
+            MbcType.Mbc2 => throw new NotSupportedException($"MBC2 is not yet supported (cartridge type: 0x{header.CartridgeType:X2})"),
+            MbcType.Unknown => throw new NotSupportedException($"Unknown or unsupported cartridge type: 0x{header.CartridgeType:X2}"),
+            _ => throw new NotSupportedException($"Unsupported MBC type: {mbcType}")
+        };
     }
 }
