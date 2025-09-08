@@ -563,5 +563,103 @@ public sealed class Cpu
         return result.Result;
     }
 
+    /// <summary>
+    /// Gets an 8-bit register by index (0=B, 1=C, 2=D, 3=E, 4=H, 5=L, 6=(HL), 7=A).
+    /// </summary>
+    internal byte GetReg8(int index)
+    {
+        return index switch
+        {
+            0 => Regs.B,
+            1 => Regs.C,
+            2 => Regs.D,
+            3 => Regs.E,
+            4 => Regs.H,
+            5 => Regs.L,
+            6 => ReadHL(),
+            7 => Regs.A,
+            _ => throw new ArgumentOutOfRangeException(nameof(index), "Register index must be 0-7")
+        };
+    }
+
+    /// <summary>
+    /// Sets an 8-bit register by index (0=B, 1=C, 2=D, 3=E, 4=H, 5=L, 6=(HL), 7=A).
+    /// </summary>
+    internal void SetReg8(int index, byte value)
+    {
+        switch (index)
+        {
+            case 0: Regs.B = value; break;
+            case 1: Regs.C = value; break;
+            case 2: Regs.D = value; break;
+            case 3: Regs.E = value; break;
+            case 4: Regs.H = value; break;
+            case 5: Regs.L = value; break;
+            case 6: WriteHL(value); break;
+            case 7: Regs.A = value; break;
+            default: throw new ArgumentOutOfRangeException(nameof(index), "Register index must be 0-7");
+        }
+    }
+
+    /// <summary>
+    /// Gets a reference to an 8-bit register by index for direct manipulation (not valid for (HL)).
+    /// </summary>
+    internal ref byte GetReg8Ref(int index)
+    {
+        switch (index)
+        {
+            case 0: return ref Regs.B;
+            case 1: return ref Regs.C;
+            case 2: return ref Regs.D;
+            case 3: return ref Regs.E;
+            case 4: return ref Regs.H;
+            case 5: return ref Regs.L;
+            case 7: return ref Regs.A;
+            default: throw new ArgumentOutOfRangeException(nameof(index), "Register index must be 0-5 or 7 for direct references");
+        }
+    }
+
+    /// <summary>
+    /// Performs DAA operation on A register.
+    /// </summary>
+    internal void DecimalAdjustA()
+    {
+        bool negative = (Regs.F & 0x40) != 0;
+        bool halfCarry = (Regs.F & 0x20) != 0;
+        bool carry = GetCarryFlag();
+        
+        var result = Alu.DecimalAdjust(Regs.A, negative, halfCarry, carry);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Complements A register (bitwise NOT).
+    /// </summary>
+    internal void ComplementA()
+    {
+        Regs.A = (byte)~Regs.A;
+        // CPL sets N and H flags, leaves Z and C unchanged
+        SetFlags(GetZeroFlag(), true, true, GetCarryFlag());
+    }
+
+    /// <summary>
+    /// Sets the carry flag.
+    /// </summary>
+    internal void SetCarryFlag()
+    {
+        // SCF sets C, resets N and H, leaves Z unchanged
+        SetFlags(GetZeroFlag(), false, false, true);
+    }
+
+    /// <summary>
+    /// Complements the carry flag.
+    /// </summary>
+    internal void ComplementCarryFlag()
+    {
+        // CCF complements C, resets N and H, leaves Z unchanged
+        SetFlags(GetZeroFlag(), false, false, !GetCarryFlag());
+    }
+
     #endregion
 }

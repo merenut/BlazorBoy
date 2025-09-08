@@ -254,4 +254,165 @@ public static class Alu
 
         return new AluResult(result, zero, negative, halfCarry, carry);
     }
+
+    /// <summary>
+    /// RRC operation: Rotate right circular
+    /// Z: Set if result is 0
+    /// N: Reset (0)
+    /// H: Reset (0)
+    /// C: Old bit 0
+    /// </summary>
+    public static AluResult RotateRightCircular(byte operand)
+    {
+        bool oldBit0 = (operand & 0x01) != 0;
+        byte result = (byte)((operand >> 1) | (oldBit0 ? 0x80 : 0));
+
+        bool zero = result == 0;
+        bool negative = false;
+        bool halfCarry = false;
+        bool carry = oldBit0;
+
+        return new AluResult(result, zero, negative, halfCarry, carry);
+    }
+
+    /// <summary>
+    /// RL operation: Rotate left through carry
+    /// Z: Set if result is 0
+    /// N: Reset (0)
+    /// H: Reset (0)
+    /// C: Old bit 7
+    /// </summary>
+    public static AluResult RotateLeft(byte operand, bool carryIn)
+    {
+        bool oldBit7 = (operand & 0x80) != 0;
+        byte result = (byte)((operand << 1) | (carryIn ? 1 : 0));
+
+        bool zero = result == 0;
+        bool negative = false;
+        bool halfCarry = false;
+        bool carry = oldBit7;
+
+        return new AluResult(result, zero, negative, halfCarry, carry);
+    }
+
+    /// <summary>
+    /// RR operation: Rotate right through carry
+    /// Z: Set if result is 0
+    /// N: Reset (0)
+    /// H: Reset (0)
+    /// C: Old bit 0
+    /// </summary>
+    public static AluResult RotateRight(byte operand, bool carryIn)
+    {
+        bool oldBit0 = (operand & 0x01) != 0;
+        byte result = (byte)((operand >> 1) | (carryIn ? 0x80 : 0));
+
+        bool zero = result == 0;
+        bool negative = false;
+        bool halfCarry = false;
+        bool carry = oldBit0;
+
+        return new AluResult(result, zero, negative, halfCarry, carry);
+    }
+
+    /// <summary>
+    /// SLA operation: Shift left arithmetic
+    /// Z: Set if result is 0
+    /// N: Reset (0)
+    /// H: Reset (0)
+    /// C: Old bit 7
+    /// </summary>
+    public static AluResult ShiftLeftArithmetic(byte operand)
+    {
+        bool oldBit7 = (operand & 0x80) != 0;
+        byte result = (byte)(operand << 1);
+
+        bool zero = result == 0;
+        bool negative = false;
+        bool halfCarry = false;
+        bool carry = oldBit7;
+
+        return new AluResult(result, zero, negative, halfCarry, carry);
+    }
+
+    /// <summary>
+    /// SRA operation: Shift right arithmetic
+    /// Z: Set if result is 0
+    /// N: Reset (0)
+    /// H: Reset (0)
+    /// C: Old bit 0
+    /// </summary>
+    public static AluResult ShiftRightArithmetic(byte operand)
+    {
+        bool oldBit0 = (operand & 0x01) != 0;
+        bool bit7 = (operand & 0x80) != 0;
+        byte result = (byte)((operand >> 1) | (bit7 ? 0x80 : 0));
+
+        bool zero = result == 0;
+        bool negative = false;
+        bool halfCarry = false;
+        bool carry = oldBit0;
+
+        return new AluResult(result, zero, negative, halfCarry, carry);
+    }
+
+    /// <summary>
+    /// SWAP operation: Swap nibbles
+    /// Z: Set if result is 0
+    /// N: Reset (0)
+    /// H: Reset (0)
+    /// C: Reset (0)
+    /// </summary>
+    public static AluResult Swap(byte operand)
+    {
+        byte result = (byte)((operand << 4) | (operand >> 4));
+
+        bool zero = result == 0;
+        bool negative = false;
+        bool halfCarry = false;
+        bool carry = false;
+
+        return new AluResult(result, zero, negative, halfCarry, carry);
+    }
+
+    /// <summary>
+    /// DAA operation: Decimal adjust accumulator
+    /// Adjusts the result of a BCD operation in the accumulator
+    /// </summary>
+    public static AluResult DecimalAdjust(byte a, bool negative, bool halfCarry, bool carry)
+    {
+        int result = a;
+        bool newCarry = carry;
+
+        if (!negative)
+        {
+            // After addition
+            if (carry || a > 0x99)
+            {
+                result += 0x60;
+                newCarry = true;
+            }
+            if (halfCarry || (a & 0x0F) > 0x09)
+            {
+                result += 0x06;
+            }
+        }
+        else
+        {
+            // After subtraction
+            if (carry)
+            {
+                result -= 0x60;
+            }
+            if (halfCarry)
+            {
+                result -= 0x06;
+            }
+        }
+
+        bool zero = (result & 0xFF) == 0;
+        bool newHalfCarry = false; // H is always reset after DAA
+
+        return new AluResult((byte)(result & 0xFF), zero, negative, newHalfCarry, newCarry);
+    }
 }
