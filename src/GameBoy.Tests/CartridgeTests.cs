@@ -1,5 +1,6 @@
 using System;
 using GameBoy.Core;
+using Xunit;
 
 namespace GameBoy.Tests;
 
@@ -72,6 +73,84 @@ public class CartridgeTests
         var smallRom = new byte[0x100];
 
         Assert.Throws<ArgumentException>(() => Cartridge.Detect(smallRom));
+    }
+
+    [Theory]
+    [InlineData(0x01)] // MBC1
+    [InlineData(0x02)] // MBC1+RAM
+    [InlineData(0x03)] // MBC1+RAM+BATTERY
+    public void Detect_AllMbc1Variants_ReturnsCorrectCartridge(byte cartridgeType)
+    {
+        var rom = CreateRom(cartridgeType, 0x01, 0x02);
+
+        var cartridge = Cartridge.Detect(rom);
+
+        Assert.IsType<Mbc1>(cartridge);
+    }
+
+    [Theory]
+    [InlineData(0x0F)] // MBC3+TIMER+BATTERY
+    [InlineData(0x10)] // MBC3+TIMER+RAM+BATTERY
+    [InlineData(0x11)] // MBC3
+    [InlineData(0x12)] // MBC3+RAM
+    [InlineData(0x13)] // MBC3+RAM+BATTERY
+    public void Detect_AllMbc3Variants_ReturnsCorrectCartridge(byte cartridgeType)
+    {
+        var rom = CreateRom(cartridgeType, 0x02, 0x03);
+
+        var cartridge = Cartridge.Detect(rom);
+
+        Assert.IsType<Mbc3>(cartridge);
+    }
+
+    [Theory]
+    [InlineData(0x19)] // MBC5
+    [InlineData(0x1A)] // MBC5+RAM
+    [InlineData(0x1B)] // MBC5+RAM+BATTERY
+    [InlineData(0x1C)] // MBC5+RUMBLE
+    [InlineData(0x1D)] // MBC5+RUMBLE+RAM
+    [InlineData(0x1E)] // MBC5+RUMBLE+RAM+BATTERY
+    public void Detect_AllMbc5Variants_ReturnsCorrectCartridge(byte cartridgeType)
+    {
+        var rom = CreateRom(cartridgeType, 0x03, 0x03);
+
+        var cartridge = Cartridge.Detect(rom);
+
+        Assert.IsType<Mbc5>(cartridge);
+    }
+
+    [Theory]
+    [InlineData(0x05)] // MBC2
+    [InlineData(0x06)] // MBC2+BATTERY
+    public void Detect_AllMbc2Variants_ThrowsNotSupportedException(byte cartridgeType)
+    {
+        var rom = CreateRom(cartridgeType, 0x00, 0x01);
+
+        var exception = Assert.Throws<NotSupportedException>(() => Cartridge.Detect(rom));
+        Assert.Contains("MBC2 is not yet supported", exception.Message);
+        Assert.Contains($"0x{cartridgeType:X2}", exception.Message);
+    }
+
+    [Fact]
+    public void Detect_NullRom_ThrowsArgumentException()
+    {
+        var exception = Assert.Throws<ArgumentException>(() => Cartridge.Detect(null!));
+        Assert.Contains("ROM too small to contain valid header", exception.Message);
+        Assert.Equal("rom", exception.ParamName);
+    }
+
+    [Theory]
+    [InlineData(0xAA)]
+    [InlineData(0xBB)]
+    [InlineData(0xCC)]
+    [InlineData(0xFF)]
+    public void Detect_UnknownCartridgeTypes_ThrowsNotSupportedException(byte cartridgeType)
+    {
+        var rom = CreateRom(cartridgeType, 0x00, 0x00);
+
+        var exception = Assert.Throws<NotSupportedException>(() => Cartridge.Detect(rom));
+        Assert.Contains("Unknown or unsupported cartridge type", exception.Message);
+        Assert.Contains($"0x{cartridgeType:X2}", exception.Message);
     }
 
     /// <summary>
