@@ -143,6 +143,13 @@ public sealed class Mmu
             return Cartridge.ReadRom(addr);
         }
 
+        // External RAM (0xA000-0xBFFF) - route through cartridge
+        if (addr >= ExtRamStart && addr <= ExtRamEnd)
+        {
+            if (Cartridge is null) return 0xFF;
+            return Cartridge.ReadExternalRam(addr);
+        }
+
         // Echo RAM (0xE000-0xFDFF) mirrors Work RAM (0xC000-0xDDFF)
         if (addr >= EchoRamStart && addr <= EchoRamEnd)
         {
@@ -162,7 +169,7 @@ public sealed class Mmu
             return ReadIoRegister(addr);
         }
 
-        // All other regions (VRAM, External RAM, Work RAM, OAM, HRAM, IE)
+        // All other regions (VRAM, Work RAM, OAM, HRAM, IE)
         return _mem[addr];
     }
 
@@ -175,6 +182,13 @@ public sealed class Mmu
         if (addr <= RomXEnd)
         {
             Cartridge?.WriteRom(addr, value);
+            return;
+        }
+
+        // External RAM (0xA000-0xBFFF) - route through cartridge
+        if (addr >= ExtRamStart && addr <= ExtRamEnd)
+        {
+            Cartridge?.WriteExternalRam(addr, value);
             return;
         }
 
@@ -199,7 +213,7 @@ public sealed class Mmu
             return;
         }
 
-        // All other regions (VRAM, External RAM, Work RAM, OAM, HRAM, IE)
+        // All other regions (VRAM, Work RAM, OAM, HRAM, IE)
         _mem[addr] = value;
     }
 
