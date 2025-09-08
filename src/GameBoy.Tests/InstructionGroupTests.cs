@@ -100,7 +100,7 @@ public class InstructionGroupTests
         // First ADD A,B to get 0x10, then DAA should adjust to 0x10
         mmu.WriteByte(0xC000, 0x80); // ADD A,B
         mmu.WriteByte(0xC001, 0x27); // DAA
-        
+
         cpu.Step(); // ADD A,B
         cpu.Step(); // DAA
 
@@ -413,7 +413,7 @@ public class InstructionGroupTests
         // Test PUSH AF (0xF5)
         mmu.WriteByte(0xC000, 0xF5);
         mmu.WriteByte(0xC001, 0xF1); // POP AF
-        
+
         var cycles1 = cpu.Step(); // PUSH AF
         cpu.Regs.A = 0x00; // Modify A
         cpu.Regs.F = 0x00; // Clear flags

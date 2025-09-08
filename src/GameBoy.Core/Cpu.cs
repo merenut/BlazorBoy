@@ -627,7 +627,7 @@ public sealed class Cpu
         bool negative = (Regs.F & 0x40) != 0;
         bool halfCarry = (Regs.F & 0x20) != 0;
         bool carry = GetCarryFlag();
-        
+
         var result = Alu.DecimalAdjust(Regs.A, negative, halfCarry, carry);
         SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
         Regs.A = result.Result;
@@ -795,9 +795,9 @@ public sealed class Cpu
         int result = Regs.HL + value;
         bool carry = result > 0xFFFF;
         bool halfCarry = (Regs.HL & 0x0FFF) + (value & 0x0FFF) > 0x0FFF;
-        
+
         Regs.HL = (ushort)(result & 0xFFFF);
-        
+
         // ADD HL,rr: N=0, H=half carry from bit 11, C=carry from bit 15, Z=unchanged
         SetFlags(GetZeroFlag(), false, halfCarry, carry);
     }

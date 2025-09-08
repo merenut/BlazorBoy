@@ -1011,17 +1011,19 @@ public static class OpcodeTable
         Primary[0xEE] = new Instruction("XOR d8", 2, 8, OperandType.Immediate8, cpu => { byte operand = cpu.ReadImm8(); cpu.XorWithA(operand); return 8; });
         Primary[0xEF] = new Instruction("RST 28H", 1, 16, OperandType.None, cpu => { cpu.PushStack(cpu.Regs.PC); cpu.Regs.PC = 0x28; return 16; });
 
-        Primary[0xF1] = new Instruction("POP AF", 1, 12, OperandType.Register, cpu => { 
+        Primary[0xF1] = new Instruction("POP AF", 1, 12, OperandType.Register, cpu =>
+        {
             ushort value = cpu.PopStack();
             cpu.Regs.A = (byte)(value >> 8);
             cpu.Regs.F = (byte)(value & 0xF0); // Only upper 4 bits of F are writable
-            return 12; 
+            return 12;
         });
         // 0xF4 is invalid - left as null
-        Primary[0xF5] = new Instruction("PUSH AF", 1, 16, OperandType.Register, cpu => { 
+        Primary[0xF5] = new Instruction("PUSH AF", 1, 16, OperandType.Register, cpu =>
+        {
             ushort value = (ushort)((cpu.Regs.A << 8) | cpu.Regs.F);
             cpu.PushStack(value);
-            return 16; 
+            return 16;
         });
         Primary[0xF6] = new Instruction("OR d8", 2, 8, OperandType.Immediate8, cpu => { byte operand = cpu.ReadImm8(); cpu.OrWithA(operand); return 8; });
         Primary[0xF7] = new Instruction("RST 30H", 1, 16, OperandType.None, cpu => { cpu.PushStack(cpu.Regs.PC); cpu.Regs.PC = 0x30; return 16; });
