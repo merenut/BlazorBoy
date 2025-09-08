@@ -297,4 +297,257 @@ public class InterruptServiceRoutineTests
     //     // This causes the instruction after HALT to be executed twice
     //     // Implementation complexity exceeds current scope
     // }
+
+    [Fact]
+    public void HALT_Bug_ExecutesNextInstructionTwice()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+
+        cpu.Regs.PC = 0xC000;
+        cpu.InterruptsEnabled = false; // IME disabled - triggers HALT bug
+        cpu.Regs.A = 0x00;
+
+        mmu.WriteByte(0xC000, 0x76); // HALT
+        mmu.WriteByte(0xC001, 0x3C); // INC A
+
+        // Request and enable interrupt (creates pending interrupt condition)
+        mmu.InterruptController.Request(InterruptType.VBlank);
+        mmu.InterruptController.SetIE(0x01);
+
+        // Execute HALT - bug should trigger since IME=0 and IE&IF≠0
+        cpu.Step();
+        
+        // CPU should not be halted due to bug
+        Assert.False(cpu.IsHalted);
+        Assert.Equal(0xC001, cpu.Regs.PC); // Should be at INC A instruction
+
+        // Execute INC A first time
+        cpu.Step();
+        Assert.Equal(0x01, cpu.Regs.A); // A should be incremented to 1
+        Assert.Equal(0xC001, cpu.Regs.PC); // PC should NOT advance due to HALT bug
+
+        // Execute INC A second time (HALT bug causes instruction to run twice)
+        cpu.Step();
+        Assert.Equal(0x02, cpu.Regs.A); // A should be incremented again to 2
+        Assert.Equal(0xC002, cpu.Regs.PC); // PC should advance normally this time
+    }
+
+    [Fact]
+    public void HALT_Bug_DoesNotTriggerWhenIMEEnabled()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+
+        cpu.Regs.PC = 0xC000;
+        cpu.InterruptsEnabled = true; // IME enabled - no HALT bug
+
+        mmu.WriteByte(0xC000, 0x76); // HALT
+
+        // Request and enable interrupt
+        mmu.InterruptController.Request(InterruptType.VBlank);
+        mmu.InterruptController.SetIE(0x01);
+
+        // Execute HALT - should service interrupt normally, no bug
+        int cycles = cpu.Step();
+        
+        Assert.False(cpu.IsHalted); // Woke up to service interrupt
+        Assert.Equal(20, cycles); // Interrupt handling cycles
+        Assert.Equal(0x0040, cpu.Regs.PC); // Should jump to VBlank vector
+        Assert.False(cpu.InterruptsEnabled); // IME cleared during interrupt
+    }
+
+    [Fact]
+    public void HALT_Bug_DoesNotTriggerWhenNoInterruptPending()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+
+        cpu.Regs.PC = 0xC000;
+        cpu.InterruptsEnabled = false; // IME disabled
+
+        mmu.WriteByte(0xC000, 0x76); // HALT
+
+        // No interrupt requested or enabled - no pending interrupt
+        mmu.InterruptController.SetIF(0x00);
+        mmu.InterruptController.SetIE(0x00);
+
+        // Execute HALT - should halt normally, no bug
+        cpu.Step();
+        
+        Assert.True(cpu.IsHalted); // Should be properly halted
+        Assert.Equal(0xC001, cpu.Regs.PC); // PC should advance past HALT
+    }
+
+    [Fact]
+    public void InterruptService_PreservesFlags()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+
+        // Set specific flag values
+        cpu.Regs.PC = 0x1234;
+        cpu.Regs.SP = 0xFFFE;
+        cpu.Regs.F = 0xF0; // All flags set (Z, N, H, C)
+        cpu.InterruptsEnabled = true;
+
+        // Request interrupt
+        mmu.InterruptController.Request(InterruptType.Timer);
+        mmu.InterruptController.SetIE(0x04);
+
+        // Service interrupt
+        cpu.Step();
+
+        // Flags should be preserved during interrupt service
+        Assert.Equal(0xF0, cpu.Regs.F);
+        Assert.Equal(0x0050, cpu.Regs.PC); // Timer vector
+        Assert.False(cpu.InterruptsEnabled); // IME cleared
+    }
+
+    [Fact]
+    public void InterruptService_StackEdgeCase_NearBoundary()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+
+        // Set stack pointer in a reasonable but low memory area
+        cpu.Regs.PC = 0x1234;
+        cpu.Regs.SP = 0x8002; // Low but in RAM area
+        cpu.InterruptsEnabled = true;
+
+        // Request interrupt
+        mmu.InterruptController.Request(InterruptType.VBlank);
+        mmu.InterruptController.SetIE(0x01);
+
+        // Service interrupt
+        cpu.Step();
+
+        // Check that PC was pushed correctly
+        Assert.Equal(0x8000, cpu.Regs.SP); // SP decremented by 2
+        ushort pushedPC = mmu.ReadWord(0x8000);
+        Assert.Equal(0x1234, pushedPC);
+        Assert.Equal(0x0040, cpu.Regs.PC); // VBlank vector
+    }
+
+    [Fact]
+    public void MultiplePendingInterrupts_ServicesHighestPriorityFirst()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+
+        cpu.Regs.PC = 0x1000;
+        cpu.Regs.SP = 0xFFFE;
+        cpu.InterruptsEnabled = true;
+
+        // Request multiple interrupts
+        mmu.InterruptController.SetIF(0x00); // Clear all pending interrupts first
+        mmu.InterruptController.Request(InterruptType.Joypad);  // Lowest priority
+        mmu.InterruptController.Request(InterruptType.Timer);   // Mid priority  
+        mmu.InterruptController.Request(InterruptType.LCDStat); // Higher priority
+        mmu.InterruptController.SetIE(0x1F); // Enable all
+
+        // First step should service LCDStat (highest priority)
+        cpu.Step();
+        Assert.Equal(0x0048, cpu.Regs.PC); // LCDStat vector
+
+        // Reset for next interrupt
+        cpu.Regs.PC = 0x1000;
+        cpu.InterruptsEnabled = true;
+        // Clear serviced interrupt and ensure we only test remaining ones
+        mmu.InterruptController.SetIF(0x00);
+        mmu.InterruptController.Request(InterruptType.Joypad);
+        mmu.InterruptController.Request(InterruptType.Timer);
+
+        // Next step should service Timer (next highest remaining)
+        cpu.Step();
+        Assert.Equal(0x0050, cpu.Regs.PC); // Timer vector
+
+        // Reset for next interrupt
+        cpu.Regs.PC = 0x1000;
+        cpu.InterruptsEnabled = true;
+        // Clear serviced interrupt and ensure we only test remaining ones
+        mmu.InterruptController.SetIF(0x00);
+        mmu.InterruptController.Request(InterruptType.Joypad);
+
+        // Final step should service Joypad (lowest remaining)
+        cpu.Step();
+        Assert.Equal(0x0060, cpu.Regs.PC); // Joypad vector
+    }
+
+    [Fact]
+    public void EI_DelayWithDifferentInstructions()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+
+        // Test EI delay with various instruction types after EI
+        var testCases = new[]
+        {
+            (opcode: 0x00, mnemonic: "NOP", cycles: 4),
+            (opcode: 0x3C, mnemonic: "INC A", cycles: 4),
+            (opcode: 0x06, mnemonic: "LD B,n", cycles: 8), // 2-byte instruction
+        };
+
+        foreach (var (opcode, mnemonic, cycles) in testCases)
+        {
+            // Reset state
+            cpu.Reset();
+            cpu.Regs.PC = 0xC000;
+            cpu.InterruptsEnabled = false;
+
+            // Setup: EI followed by test instruction
+            mmu.WriteByte(0xC000, 0xFB); // EI
+            mmu.WriteByte(0xC001, (byte)opcode);
+            if (opcode == 0x06) mmu.WriteByte(0xC002, (byte)0xFF); // Immediate value for LD B,n
+
+            // Request interrupt
+            mmu.InterruptController.Request(InterruptType.VBlank);
+            mmu.InterruptController.SetIE(0x01);
+
+            // Execute EI
+            cpu.Step();
+            Assert.False(cpu.InterruptsEnabled); // Still disabled after EI
+
+            // Execute following instruction - should enable interrupts but not service yet
+            int instructionCycles = cpu.Step();
+            Assert.Equal(cycles, instructionCycles); // Should execute the instruction normally
+            Assert.True(cpu.InterruptsEnabled); // Now enabled
+
+            // Next step should service the interrupt
+            int interruptCycles = cpu.Step();
+            Assert.Equal(20, interruptCycles); // Interrupt handling cycles
+            Assert.Equal(0x0040, cpu.Regs.PC); // VBlank vector
+        }
+    }
+
+    [Fact]
+    public void IME_DelayComplexScenario_EI_DI_Sequence()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+
+        cpu.Regs.PC = 0xC000;
+        cpu.InterruptsEnabled = false;
+
+        // Setup: EI, NOP, DI sequence
+        mmu.WriteByte(0xC000, 0xFB); // EI
+        mmu.WriteByte(0xC001, 0x00); // NOP
+        mmu.WriteByte(0xC002, 0xF3); // DI
+
+        // Clear any default interrupts
+        mmu.InterruptController.SetIF(0x00);
+
+        // Execute EI - delay starts
+        cpu.Step();
+        Assert.False(cpu.InterruptsEnabled);
+
+        // Execute NOP - should enable interrupts
+        cpu.Step();
+        Assert.True(cpu.InterruptsEnabled);
+
+        // Execute DI - should immediately disable interrupts
+        cpu.Step();
+        Assert.False(cpu.InterruptsEnabled);
+        Assert.Equal(0xC003, cpu.Regs.PC); // Should continue to next instruction
+    }
 }

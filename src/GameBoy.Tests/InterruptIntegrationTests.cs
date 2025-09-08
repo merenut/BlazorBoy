@@ -153,4 +153,114 @@ public class InterruptIntegrationTests
         timer.Step(1024);
         Assert.Equal(0xE4, interruptController.IF); // Second interrupt
     }
+
+    [Fact]
+    public void SubsystemInterrupts_OnlyTriggerUnderCorrectConditions()
+    {
+        var interruptController = new InterruptController();
+
+        // Test Timer - should not trigger without proper setup
+        var timer = new GameBoy.Core.Timer(interruptController);
+        interruptController.SetIF(0x00);
+        timer.Step(1); // Single step shouldn't trigger
+        Assert.Equal(0xE0, interruptController.IF); // No timer interrupt
+
+        // Test Joypad - should only trigger on button press (false->true transition)
+        var joypad = new Joypad(interruptController);
+        interruptController.SetIF(0x00);
+        joypad.A = false; // Keep button released
+        Assert.Equal(0xE0, interruptController.IF); // No interrupt
+
+        joypad.A = true; // Press button (triggers interrupt)
+        Assert.Equal(0xF0, interruptController.IF); // Joypad interrupt
+
+        // Additional press should not trigger again
+        interruptController.SetIF(0x00);
+        joypad.A = true; // Already pressed, no new transition
+        Assert.Equal(0xE0, interruptController.IF); // No additional interrupt
+    }
+
+    [Fact]
+    public void ComplexEmulatorScenario_MultipleInterruptSources()
+    {
+        var emulator = new Emulator();
+        
+        // Clear all interrupts and enable specific ones
+        emulator.Mmu.InterruptController.SetIF(0x00);
+        emulator.Mmu.InterruptController.SetIE(0x15); // Enable VBlank, Timer, Joypad
+
+        // Simulate a frame step that should trigger VBlank
+        for (int cycles = 0; cycles < 70224; cycles += 4)
+        {
+            emulator.StepFrame(); // Step emulator to complete a frame
+            if ((emulator.Mmu.InterruptController.IF & 0x01) != 0) break; // VBlank triggered
+        }
+
+        // VBlank should have been triggered
+        Assert.True((emulator.Mmu.InterruptController.IF & 0x01) != 0, "VBlank interrupt should be triggered");
+
+        // Test that multiple interrupts can be pending simultaneously
+        emulator.Mmu.InterruptController.Request(InterruptType.Timer);
+        emulator.Mmu.InterruptController.Request(InterruptType.Joypad);
+
+        // Check that all requested interrupts are pending
+        byte expectedIF = 0x01 | 0x04 | 0x10; // VBlank + Timer + Joypad
+        Assert.True((emulator.Mmu.InterruptController.IF & expectedIF) == expectedIF,
+            "Multiple interrupts should be pending simultaneously");
+    }
+
+    [Fact]
+    public void InterruptPriorityIntegration_EmulatorLevel()
+    {
+        var emulator = new Emulator();
+
+        // Setup CPU state for interrupt testing
+        emulator.Cpu.Regs.PC = 0x1000;
+        emulator.Cpu.InterruptsEnabled = true;
+
+        // Request multiple interrupts in reverse priority order
+        emulator.Mmu.InterruptController.SetIF(0x00);
+        emulator.Mmu.InterruptController.Request(InterruptType.Joypad);  // Lowest
+        emulator.Mmu.InterruptController.Request(InterruptType.Serial);  // Low
+        emulator.Mmu.InterruptController.Request(InterruptType.Timer);   // Medium
+        emulator.Mmu.InterruptController.Request(InterruptType.LCDStat); // High
+        emulator.Mmu.InterruptController.Request(InterruptType.VBlank);  // Highest
+        emulator.Mmu.InterruptController.SetIE(0x1F); // Enable all
+
+        // Step emulator - should service VBlank first
+        emulator.StepFrame();
+        Assert.Equal(0x0040, emulator.Cpu.Regs.PC); // VBlank vector
+
+        // Check that VBlank interrupt was cleared but others remain
+        Assert.Equal(0xFE, emulator.Mmu.InterruptController.IF); // All except VBlank (0x01)
+    }
+
+    [Fact]
+    public void HALTIntegration_EmulatorWithSubsystems()
+    {
+        var emulator = new Emulator();
+
+        // Setup HALT instruction
+        emulator.Mmu.WriteByte(0x1000, 0x76); // HALT at 0x1000
+        emulator.Cpu.Regs.PC = 0x1000;
+        emulator.Cpu.InterruptsEnabled = true;
+
+        // Execute HALT
+        emulator.StepFrame();
+        Assert.True(emulator.Cpu.IsHalted);
+
+        // Clear all interrupts initially
+        emulator.Mmu.InterruptController.SetIF(0x00);
+        emulator.Mmu.InterruptController.SetIE(0x01); // Enable VBlank
+
+        // Step emulator until VBlank is triggered by PPU
+        for (int i = 0; i < 1000 && emulator.Cpu.IsHalted; i++)
+        {
+            emulator.StepFrame(); // Step until PPU triggers VBlank
+        }
+
+        // CPU should have woken up and serviced the VBlank interrupt
+        Assert.False(emulator.Cpu.IsHalted);
+        Assert.Equal(0x0040, emulator.Cpu.Regs.PC); // Should be at VBlank vector
+    }
 }
