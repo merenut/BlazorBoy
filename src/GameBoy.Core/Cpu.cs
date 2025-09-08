@@ -48,7 +48,7 @@ public sealed class Cpu
         }
     }
 
-    private readonly Mmu _mmu;
+    internal readonly Mmu _mmu;
 
     /// <summary>
     /// The registers for this CPU instance.
@@ -91,53 +91,75 @@ public sealed class Cpu
     public int Step()
     {
         byte opcode = _mmu.ReadByte(Regs.PC++);
-        // Minimal placeholder: NOP for all opcodes.
-        return ExecutePlaceholder(opcode);
-    }
 
-    private int ExecutePlaceholder(byte opcode)
-    {
-        // Provide a couple of actually working ops for tests: LD r,r'
-        // We'll implement LD B,B .. LD A,A via a simple mapping for tests.
-        if (opcode >= 0x40 && opcode <= 0x7F && opcode != 0x76)
+        // Handle CB-prefixed instructions
+        if (opcode == 0xCB)
         {
-            int dst = (opcode >> 3) & 0x07;
-            int src = opcode & 0x07;
-            byte GetReg(int idx) => idx switch
+            byte cbOpcode = _mmu.ReadByte(Regs.PC++);
+            var instruction = OpcodeTable.CB[cbOpcode];
+            if (instruction.HasValue)
             {
-                0 => Regs.B,
-                1 => Regs.C,
-                2 => Regs.D,
-                3 => Regs.E,
-                4 => Regs.H,
-                5 => Regs.L,
-                6 => _mmu.ReadByte(Regs.HL),
-                7 => Regs.A,
-                _ => 0
-            };
-            void SetReg(int idx, byte val)
-            {
-                switch (idx)
-                {
-                    case 0: Regs.B = val; break;
-                    case 1: Regs.C = val; break;
-                    case 2: Regs.D = val; break;
-                    case 3: Regs.E = val; break;
-                    case 4: Regs.H = val; break;
-                    case 5: Regs.L = val; break;
-                    case 6: _mmu.WriteByte(Regs.HL, val); break;
-                    case 7: Regs.A = val; break;
-                }
+                return instruction.Value.Execute(this);
             }
-            SetReg(dst, GetReg(src));
-            return src == 6 || dst == 6 ? 8 : 4;
+            // Unknown CB instruction - treat as NOP for now
+            return 8;
         }
 
-        // 0x00: NOP
-        if (opcode == 0x00)
-            return 4;
+        // Handle primary instruction table
+        var primaryInstruction = OpcodeTable.Primary[opcode];
+        if (primaryInstruction.HasValue)
+        {
+            return primaryInstruction.Value.Execute(this);
+        }
 
-        // Unimplemented opcodes act as NOP in placeholder
+        // Unknown instruction - treat as NOP for now  
         return 4;
+    }
+
+    /// <summary>
+    /// Reads an immediate 8-bit value from memory at PC and advances PC.
+    /// </summary>
+    internal byte ReadImm8()
+    {
+        return _mmu.ReadByte(Regs.PC++);
+    }
+
+    /// <summary>
+    /// Reads an immediate 16-bit value from memory at PC and advances PC by 2.
+    /// </summary>
+    internal ushort ReadImm16()
+    {
+        byte low = _mmu.ReadByte(Regs.PC++);
+        byte high = _mmu.ReadByte(Regs.PC++);
+        return (ushort)(low | (high << 8));
+    }
+
+    /// <summary>
+    /// Adds a value to register A and sets flags accordingly.
+    /// </summary>
+    internal void AddToA(byte value)
+    {
+        int result = Regs.A + value;
+
+        // Set flags
+        bool zero = (result & 0xFF) == 0;
+        bool carry = result > 0xFF;
+        bool halfCarry = (Regs.A & 0x0F) + (value & 0x0F) > 0x0F;
+
+        SetFlags(zero, false, halfCarry, carry);
+        Regs.A = (byte)(result & 0xFF);
+    }
+
+    /// <summary>
+    /// Sets CPU flags in the F register.
+    /// </summary>
+    internal void SetFlags(bool zero, bool negative, bool halfCarry, bool carry)
+    {
+        Regs.F = (byte)(
+            (zero ? 0x80 : 0) |
+            (negative ? 0x40 : 0) |
+            (halfCarry ? 0x20 : 0) |
+            (carry ? 0x10 : 0)
+        );
     }
 }
