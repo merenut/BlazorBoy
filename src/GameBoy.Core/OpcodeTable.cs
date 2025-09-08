@@ -559,7 +559,7 @@ public static class OpcodeTable
         // 0xFB: EI (enable interrupts)
         Primary[0xFB] = new Instruction("EI", 1, 4, OperandType.None, cpu =>
         {
-            cpu.InterruptsEnabled = true;
+            cpu.EnableInterruptsWithDelay();
             return 4;
         });
 

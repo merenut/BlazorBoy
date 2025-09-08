@@ -56,9 +56,19 @@ public sealed class Cpu
     public Registers Regs;
 
     /// <summary>
-    /// Indicates whether interrupts are enabled.
+    /// Indicates whether interrupts are enabled (IME flag).
     /// </summary>
     public bool InterruptsEnabled { get; set; }
+
+    /// <summary>
+    /// Indicates whether the CPU is in halted state.
+    /// </summary>
+    public bool IsHalted { get; private set; }
+
+    /// <summary>
+    /// Counter for EI instruction delay - interrupts are enabled after the next instruction.
+    /// </summary>
+    private int _imeEnableDelay;
 
     /// <summary>
     /// Initializes the CPU with the given memory management unit.
@@ -83,6 +93,8 @@ public sealed class Cpu
         Regs.DE = 0x00D8;
         Regs.HL = 0x014D;
         InterruptsEnabled = true;
+        IsHalted = false;
+        _imeEnableDelay = 0;
     }
 
     /// <summary>
@@ -90,7 +102,33 @@ public sealed class Cpu
     /// </summary>
     public int Step()
     {
+        // Check for pending interrupts before executing instruction
+        if (InterruptsEnabled && _mmu.InterruptController.TryGetPending(out InterruptType interruptType))
+        {
+            // Service the interrupt
+            return ServiceInterrupt(interruptType);
+        }
+
+        // If halted and no interrupt to process, stay halted (HALT bug handling)
+        if (IsHalted)
+        {
+            // Check for pending interrupts that would wake up from HALT even if IME is disabled
+            if (_mmu.InterruptController.TryGetPending(out _))
+            {
+                IsHalted = false; // Wake up from HALT
+                return 4; // Wake up takes 4 cycles, but don't execute next instruction yet
+            }
+            else
+            {
+                return 4; // Stay halted, consume 4 cycles (NOP equivalent)
+            }
+        }
+
         byte opcode = _mmu.ReadByte(Regs.PC++);
+        int cycles;
+
+        // TODO: HALT bug implementation would go here
+        // Currently commented out due to complexity
 
         // Handle CB-prefixed instructions
         if (opcode == 0xCB)
@@ -99,21 +137,40 @@ public sealed class Cpu
             var instruction = OpcodeTable.CB[cbOpcode];
             if (instruction.HasValue)
             {
-                return instruction.Value.Execute(this);
+                cycles = instruction.Value.Execute(this);
             }
-            // Unknown CB instruction - treat as NOP for now
-            return 8;
+            else
+            {
+                // Unknown CB instruction - treat as NOP for now
+                cycles = 8;
+            }
         }
-
-        // Handle primary instruction table
-        var primaryInstruction = OpcodeTable.Primary[opcode];
-        if (primaryInstruction.HasValue)
+        else
         {
-            return primaryInstruction.Value.Execute(this);
+            // Handle primary instruction table
+            var primaryInstruction = OpcodeTable.Primary[opcode];
+            if (primaryInstruction.HasValue)
+            {
+                cycles = primaryInstruction.Value.Execute(this);
+            }
+            else
+            {
+                // Unknown instruction - treat as NOP for now  
+                cycles = 4;
+            }
         }
 
-        // Unknown instruction - treat as NOP for now  
-        return 4;
+        // Handle IME enable delay from EI instruction (after instruction execution)
+        if (_imeEnableDelay > 0)
+        {
+            _imeEnableDelay--;
+            if (_imeEnableDelay == 0)
+            {
+                InterruptsEnabled = true;
+            }
+        }
+
+        return cycles;
     }
 
     /// <summary>
@@ -498,8 +555,48 @@ public sealed class Cpu
     /// </summary>
     internal void SetHalted(bool halted)
     {
-        // For now, just a placeholder implementation
-        // In a full implementation, this would control CPU execution state
+        IsHalted = halted;
+
+        // TODO: Implement HALT bug when IME=0 and IE&IF≠0
+        // This is a complex hardware quirk that requires more detailed research
+    }
+
+    /// <summary>
+    /// Services an interrupt by performing the interrupt service routine.
+    /// This includes pushing the current PC onto the stack, clearing IME,
+    /// and jumping to the interrupt vector.
+    /// </summary>
+    /// <param name="interruptType">The interrupt type to service.</param>
+    /// <returns>The number of cycles consumed (20 cycles for interrupt handling).</returns>
+    private int ServiceInterrupt(InterruptType interruptType)
+    {
+        // Clear halted state if CPU was halted
+        IsHalted = false;
+
+        // Disable interrupts (clear IME)
+        InterruptsEnabled = false;
+        _imeEnableDelay = 0; // Cancel any pending IME enable
+
+        // Push current PC onto the stack (takes 2 cycles worth of memory operations)
+        PushStack(Regs.PC);
+
+        // Get interrupt vector and jump to it
+        ushort vectorAddress = _mmu.InterruptController.Service(interruptType);
+        Regs.PC = vectorAddress;
+
+        // Interrupt handling takes 20 cycles total:
+        // 2 cycles to detect interrupt
+        // 8 cycles to push PC onto stack (2 memory writes)
+        // 10 cycles to jump to vector
+        return 20;
+    }
+
+    /// <summary>
+    /// Enables interrupts with a one-instruction delay (EI instruction semantics).
+    /// </summary>
+    internal void EnableInterruptsWithDelay()
+    {
+        _imeEnableDelay = 2; // Enable after next instruction completes
     }
 
     /// <summary>
