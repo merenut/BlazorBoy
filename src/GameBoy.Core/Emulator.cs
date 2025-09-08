@@ -13,22 +13,28 @@ public sealed class Emulator
     private readonly Cpu _cpu;
     private readonly Ppu _ppu;
     private readonly Timer _timer;
+    private readonly Serial _serial;
 
     private int _cycleAccumulator = 0;
 
-    public Joypad Joypad { get; } = new();
+    public Joypad Joypad { get; }
 
     public Ppu Ppu => _ppu;
     public Cpu Cpu => _cpu;
     public Mmu Mmu => _mmu;
     public InterruptController InterruptController => _mmu.InterruptController;
+    public Serial Serial => _serial;
 
     public Emulator()
     {
         _mmu = new Mmu();
         _cpu = new Cpu(_mmu);
-        _ppu = new Ppu();
-        _timer = new Timer();
+
+        // Pass InterruptController to all components that need to request interrupts
+        _ppu = new Ppu(_mmu.InterruptController);
+        _timer = new Timer(_mmu.InterruptController);
+        _serial = new Serial(_mmu.InterruptController);
+        Joypad = new Joypad(_mmu.InterruptController);
     }
 
     /// <summary>
@@ -84,6 +90,7 @@ public sealed class Emulator
         int cycles = _cpu.Step();
         _timer.Step(cycles);
         _ppu.Step(cycles);
+        _serial.Step(cycles);
         _cycleAccumulator += cycles;
 
         if (_cycleAccumulator >= CyclesPerFrame)
