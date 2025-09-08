@@ -69,6 +69,10 @@ public sealed class Mmu
     private byte _wy = 0x00;
     private byte _wx = 0x00;
 
+    // DMA state tracking
+    private bool _dmaActive = false;
+    private int _dmaRemainingCycles = 0;
+
     public Cartridge? Cartridge { get; set; }
 
     /// <summary>
@@ -85,6 +89,11 @@ public sealed class Mmu
     /// The PPU unit that manages LCD registers (LY, STAT).
     /// </summary>
     public Ppu? Ppu { get; set; }
+
+    /// <summary>
+    /// Gets whether a DMA transfer is currently in progress.
+    /// </summary>
+    public bool IsDmaActive => _dmaActive;
 
     /// <summary>
     /// Initializes a new instance of the MMU and sets post-BIOS I/O register defaults.
@@ -139,6 +148,10 @@ public sealed class Mmu
         // Clear all memory except ROM areas
         Array.Clear(_mem, VramStart, AddressSpaceSize - VramStart);
         InitializePostBiosDefaults();
+
+        // Reset DMA state
+        _dmaActive = false;
+        _dmaRemainingCycles = 0;
     }
 
     /// <summary>
@@ -306,6 +319,56 @@ public sealed class Mmu
     }
 
     /// <summary>
+    /// Starts a DMA transfer from the specified source page to OAM.
+    /// </summary>
+    /// <param name="sourcePageHigh">The high byte of the source address (DMA register value).</param>
+    private void StartDmaTransfer(byte sourcePageHigh)
+    {
+        // Calculate source address - DMA value is the high byte, low byte starts at 0x00
+        ushort sourceAddr = (ushort)(sourcePageHigh << 8);
+
+        // Validate source address - cannot be 0xE000-0xFFFF (echo RAM, I/O, HRAM)
+        if (sourceAddr >= EchoRamStart)
+        {
+            // Invalid source address - handle gracefully by ignoring the transfer
+            return;
+        }
+
+        // Perform immediate 160-byte copy from source to OAM (0xFE00-0xFE9F)
+        for (int i = 0; i < 160; i++)
+        {
+            ushort srcAddr = (ushort)(sourceAddr + i);
+            ushort destAddr = (ushort)(OamStart + i);
+
+            // Read from source and write to OAM directly in memory
+            byte data = ReadByte(srcAddr);
+            _mem[destAddr] = data;
+        }
+
+        // Set DMA timing state (160 bytes × 4 cycles/byte = 640 cycles)
+        _dmaActive = true;
+        _dmaRemainingCycles = 640;
+    }
+
+    /// <summary>
+    /// Steps the DMA timing by the given number of cycles.
+    /// </summary>
+    /// <param name="cycles">The number of cycles to step.</param>
+    public void StepDma(int cycles)
+    {
+        if (!_dmaActive)
+            return;
+
+        _dmaRemainingCycles -= cycles;
+
+        if (_dmaRemainingCycles <= 0)
+        {
+            _dmaActive = false;
+            _dmaRemainingCycles = 0;
+        }
+    }
+
+    /// <summary>
     /// Reads from I/O registers with proper stubbing behavior.
     /// </summary>
     private byte ReadIoRegister(ushort addr)
@@ -382,8 +445,9 @@ public sealed class Mmu
                 _lyc = value;
                 break;
             case DMA:
-                // DMA writes are latched, no transfer logic yet
+                // DMA write triggers immediate transfer to OAM
                 _dma = value;
+                StartDmaTransfer(value);
                 break;
             case BGP:
                 _bgp = value;
