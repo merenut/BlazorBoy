@@ -1043,17 +1043,35 @@ public static class OpcodeTable
                 int cycles = (reg == 6) ? 16 : 8; // (HL) operations take longer
                 OperandType operandType = (reg == 6) ? OperandType.Memory : OperandType.Register;
 
+                // Capture the loop variables in local variables to avoid closure issues
+                int capturedOp = op;
+                int capturedReg = reg;
+
                 CB[opcode] = new Instruction(mnemonic, 2, cycles, operandType, cpu =>
                 {
-                    // Placeholder for rotate/shift operations
-                    if (reg == 6)
+                    if (capturedReg == 6)
                     {
                         // (HL) memory operation
+                        byte value = cpu.ReadHL();
+                        byte result = capturedOp switch
+                        {
+                            0 => cpu.RotateLeftCircular(value),     // RLC
+                            1 => cpu.RotateRightCircular(value),    // RRC
+                            2 => cpu.RotateLeft(value),             // RL
+                            3 => cpu.RotateRight(value),            // RR
+                            4 => cpu.ShiftLeftArithmetic(value),    // SLA
+                            5 => cpu.ShiftRightArithmetic(value),   // SRA
+                            6 => cpu.SwapNibbles(value),            // SWAP
+                            7 => cpu.ShiftRightLogical(value),      // SRL
+                            _ => value
+                        };
+                        cpu.WriteHL(result);
                         return 16;
                     }
                     else
                     {
                         // Register operation
+                        cpu.PerformRotateShift(capturedOp, capturedReg);
                         return 8;
                     }
                 });
@@ -1070,18 +1088,22 @@ public static class OpcodeTable
                 int cycles = (reg == 6) ? 12 : 8; // (HL) operations take longer
                 OperandType operandType = (reg == 6) ? OperandType.Memory : OperandType.Register;
 
+                // Capture the loop variables in local variables to avoid closure issues
+                int capturedBit = bit;
+                int capturedReg = reg;
+
                 CB[opcode] = new Instruction(mnemonic, 2, cycles, operandType, cpu =>
                 {
-                    // Placeholder for bit test operations
-                    if (reg == 6)
+                    if (capturedReg == 6)
                     {
                         // Test bit in (HL)
-                        cpu.TestBit(cpu.ReadHL(), bit);
+                        cpu.TestBit(cpu.ReadHL(), capturedBit);
                         return 12;
                     }
                     else
                     {
-                        // Test bit in register - will need register access method
+                        // Test bit in register
+                        cpu.TestBit(cpu.GetReg8(capturedReg), capturedBit);
                         return 8;
                     }
                 });
@@ -1098,20 +1120,26 @@ public static class OpcodeTable
                 int cycles = (reg == 6) ? 16 : 8; // (HL) operations take longer
                 OperandType operandType = (reg == 6) ? OperandType.Memory : OperandType.Register;
 
+                // Capture the loop variables in local variables to avoid closure issues
+                int capturedBit = bit;
+                int capturedReg = reg;
+
                 CB[opcode] = new Instruction(mnemonic, 2, cycles, operandType, cpu =>
                 {
-                    // Placeholder for bit reset operations
-                    if (reg == 6)
+                    if (capturedReg == 6)
                     {
                         // Reset bit in (HL)
                         byte value = cpu.ReadHL();
-                        value = cpu.ResetBit(value, bit);
-                        cpu.WriteHL(value);
+                        byte result = cpu.ResetBit(value, capturedBit);
+                        cpu.WriteHL(result);
                         return 16;
                     }
                     else
                     {
-                        // Reset bit in register - will need register access method
+                        // Reset bit in register
+                        byte value = cpu.GetReg8(capturedReg);
+                        byte result = cpu.ResetBit(value, capturedBit);
+                        cpu.SetReg8(capturedReg, result);
                         return 8;
                     }
                 });
@@ -1128,20 +1156,26 @@ public static class OpcodeTable
                 int cycles = (reg == 6) ? 16 : 8; // (HL) operations take longer
                 OperandType operandType = (reg == 6) ? OperandType.Memory : OperandType.Register;
 
+                // Capture the loop variables in local variables to avoid closure issues
+                int capturedBit = bit;
+                int capturedReg = reg;
+
                 CB[opcode] = new Instruction(mnemonic, 2, cycles, operandType, cpu =>
                 {
-                    // Placeholder for bit set operations
-                    if (reg == 6)
+                    if (capturedReg == 6)
                     {
                         // Set bit in (HL)
                         byte value = cpu.ReadHL();
-                        value = cpu.SetBit(value, bit);
-                        cpu.WriteHL(value);
+                        byte result = cpu.SetBit(value, capturedBit);
+                        cpu.WriteHL(result);
                         return 16;
                     }
                     else
                     {
-                        // Set bit in register - will need register access method
+                        // Set bit in register
+                        byte value = cpu.GetReg8(capturedReg);
+                        byte result = cpu.SetBit(value, capturedBit);
+                        cpu.SetReg8(capturedReg, result);
                         return 8;
                     }
                 });

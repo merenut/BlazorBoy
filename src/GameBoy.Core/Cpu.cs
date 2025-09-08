@@ -661,5 +661,87 @@ public sealed class Cpu
         SetFlags(GetZeroFlag(), false, false, !GetCarryFlag());
     }
 
+    /// <summary>
+    /// Performs rotate/shift operations on a register or memory location.
+    /// </summary>
+    internal byte PerformRotateShift(int operation, int regIndex)
+    {
+        byte value = GetReg8(regIndex);
+        byte result = operation switch
+        {
+            0 => RotateLeftCircular(value),     // RLC
+            1 => RotateRightCircular(value),    // RRC
+            2 => RotateLeft(value),             // RL
+            3 => RotateRight(value),            // RR
+            4 => ShiftLeftArithmetic(value),    // SLA
+            5 => ShiftRightArithmetic(value),   // SRA
+            6 => SwapNibbles(value),            // SWAP
+            7 => ShiftRightLogical(value),      // SRL
+            _ => throw new ArgumentOutOfRangeException(nameof(operation), "Invalid rotate/shift operation")
+        };
+        SetReg8(regIndex, result);
+        return result;
+    }
+
+    /// <summary>
+    /// Rotates a byte right circularly and sets flags.
+    /// </summary>
+    internal byte RotateRightCircular(byte value)
+    {
+        var result = Alu.RotateRightCircular(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Rotates a byte left through carry and sets flags.
+    /// </summary>
+    internal byte RotateLeft(byte value)
+    {
+        var result = Alu.RotateLeft(value, GetCarryFlag());
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Rotates a byte right through carry and sets flags.
+    /// </summary>
+    internal byte RotateRight(byte value)
+    {
+        var result = Alu.RotateRight(value, GetCarryFlag());
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Shifts a byte left arithmetically and sets flags.
+    /// </summary>
+    internal byte ShiftLeftArithmetic(byte value)
+    {
+        var result = Alu.ShiftLeftArithmetic(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Shifts a byte right arithmetically and sets flags.
+    /// </summary>
+    internal byte ShiftRightArithmetic(byte value)
+    {
+        var result = Alu.ShiftRightArithmetic(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Swaps the nibbles of a byte and sets flags.
+    /// </summary>
+    internal byte SwapNibbles(byte value)
+    {
+        var result = Alu.Swap(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
     #endregion
 }
