@@ -14,6 +14,10 @@ public class CartridgeHeaderTests
         // Create a minimal ROM with valid header
         var rom = new byte[0x8000]; // 32KB ROM
 
+        // Set title
+        var titleBytes = System.Text.Encoding.ASCII.GetBytes("TEST GAME");
+        Array.Copy(titleBytes, 0, rom, 0x0134, titleBytes.Length);
+
         // Set cartridge type to MBC1 (0x01)
         rom[0x0147] = 0x01;
         // Set ROM size to 32KB (0x00)
@@ -34,6 +38,7 @@ public class CartridgeHeaderTests
 
         var header = CartridgeHeader.Parse(rom);
 
+        Assert.Equal("TEST GAME", header.Title);
         Assert.Equal(0x01, header.CartridgeType);
         Assert.Equal(0x00, header.RomSizeCode);
         Assert.Equal(0x02, header.RamSizeCode);
@@ -230,5 +235,118 @@ public class CartridgeHeaderTests
         {
             Assert.Equal(0, header.RamBankCount);
         }
+    }
+
+    [Fact]
+    public void Title_ExtractsCorrectTitle()
+    {
+        var rom = new byte[0x8000];
+
+        // Test normal title
+        var titleBytes = System.Text.Encoding.ASCII.GetBytes("SUPER MARIO");
+        Array.Copy(titleBytes, 0, rom, 0x0134, titleBytes.Length);
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.Equal("SUPER MARIO", header.Title);
+    }
+
+    [Fact]
+    public void Title_HandlesNullTermination()
+    {
+        var rom = new byte[0x8000];
+
+        // Test title with null termination
+        var titleBytes = System.Text.Encoding.ASCII.GetBytes("TETRIS\0\0\0\0\0\0\0\0\0\0");
+        Array.Copy(titleBytes, 0, rom, 0x0134, titleBytes.Length);
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.Equal("TETRIS", header.Title);
+    }
+
+    [Fact]
+    public void Title_HandlesEmptyTitle()
+    {
+        var rom = new byte[0x8000];
+
+        // Test empty title (all zeros)
+        for (int i = 0; i < 16; i++)
+        {
+            rom[0x0134 + i] = 0;
+        }
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.Equal("", header.Title);
+    }
+
+    [Fact]
+    public void Title_HandlesNonPrintableCharacters()
+    {
+        var rom = new byte[0x8000];
+
+        // Test title with non-printable characters
+        rom[0x0134] = (byte)'T';
+        rom[0x0135] = (byte)'E';
+        rom[0x0136] = 0x01; // Control character
+        rom[0x0137] = (byte)'S';
+        rom[0x0138] = (byte)'T';
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.Equal("TE ST", header.Title);
+    }
+
+    [Fact]
+    public void IsValidHeader_ValidHeader_ReturnsTrue()
+    {
+        var rom = new byte[0x8000];
+        rom[0x0147] = 0x01; // Valid cartridge type
+        rom[0x0148] = 0x02; // Valid ROM size
+        rom[0x0149] = 0x02; // Valid RAM size
+        rom[0x014A] = 0x01; // Valid destination code
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.True(header.IsValidHeader());
+    }
+
+    [Fact]
+    public void IsValidHeader_InvalidRomSize_ReturnsFalse()
+    {
+        var rom = new byte[0x8000];
+        rom[0x0148] = 0x99; // Invalid ROM size code
+        rom[0x0149] = 0x02; // Valid RAM size
+        rom[0x014A] = 0x01; // Valid destination code
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.False(header.IsValidHeader());
+    }
+
+    [Fact]
+    public void IsValidHeader_InvalidRamSize_ReturnsFalse()
+    {
+        var rom = new byte[0x8000];
+        rom[0x0148] = 0x02; // Valid ROM size
+        rom[0x0149] = 0x99; // Invalid RAM size code
+        rom[0x014A] = 0x01; // Valid destination code
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.False(header.IsValidHeader());
+    }
+
+    [Fact]
+    public void IsValidHeader_InvalidDestinationCode_ReturnsFalse()
+    {
+        var rom = new byte[0x8000];
+        rom[0x0148] = 0x02; // Valid ROM size
+        rom[0x0149] = 0x02; // Valid RAM size
+        rom[0x014A] = 0x99; // Invalid destination code
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.False(header.IsValidHeader());
+    }
+
+    [Fact]
+    public void Parse_NullRom_ThrowsArgumentException()
+    {
+        byte[]? nullRom = null;
+        Assert.Throws<ArgumentException>(() => CartridgeHeader.Parse(nullRom!));
     }
 }
