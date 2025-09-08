@@ -14,8 +14,8 @@ public class InterruptIntegrationTests
         interruptController.SetIF(0x00); // Clear all interrupt flags
         var ppu = new Ppu(interruptController);
 
-        // Step the PPU - should request VBlank interrupt
-        ppu.Step(4);
+        // Step the PPU enough cycles to complete a frame - should request VBlank interrupt
+        ppu.Step(70224);
 
         // Verify VBlank interrupt was requested (bit 0)
         Assert.Equal(0xE1, interruptController.IF); // 0x01 (VBlank) | 0xE0 (upper bits)
