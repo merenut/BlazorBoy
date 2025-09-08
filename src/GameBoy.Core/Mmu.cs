@@ -82,6 +82,11 @@ public sealed class Mmu
     public Timer? Timer { get; set; }
 
     /// <summary>
+    /// The PPU unit that manages LCD registers (LY, STAT).
+    /// </summary>
+    public Ppu? Ppu { get; set; }
+
+    /// <summary>
     /// Initializes a new instance of the MMU and sets post-BIOS I/O register defaults.
     /// </summary>
     public Mmu()
@@ -314,10 +319,10 @@ public sealed class Mmu
             TAC => Timer?.TAC ?? 0xF8,
             IF => InterruptController.IF, // Delegate to InterruptController
             LCDC => _lcdc,
-            STAT => _stat,
+            STAT => Ppu?.STAT ?? _stat,
             SCY => _scy,
             SCX => _scx,
-            LY => _ly,
+            LY => Ppu?.LY ?? _ly,
             LYC => _lyc,
             DMA => _dma,
             BGP => _bgp,
