@@ -7,10 +7,6 @@ public sealed class Joypad
 {
     private readonly InterruptController _interruptController;
 
-    // Previous state to detect changes
-    private bool _prevRight, _prevLeft, _prevUp, _prevDown;
-    private bool _prevA, _prevB, _prevSelect, _prevStart;
-
     // Current state
     private bool _right, _left, _up, _down;
     private bool _a, _b, _select, _start;
@@ -29,9 +25,8 @@ public sealed class Joypad
         get => _right;
         set
         {
-            if (!_prevRight && value) // Button pressed (false -> true transition)
+            if (!_right && value) // Button pressed (false -> true transition)
                 _interruptController.Request(InterruptType.Joypad);
-            _prevRight = _right;
             _right = value;
         }
     }
@@ -41,9 +36,8 @@ public sealed class Joypad
         get => _left;
         set
         {
-            if (!_prevLeft && value) // Button pressed (false -> true transition)
+            if (!_left && value) // Button pressed (false -> true transition)
                 _interruptController.Request(InterruptType.Joypad);
-            _prevLeft = _left;
             _left = value;
         }
     }
@@ -53,9 +47,8 @@ public sealed class Joypad
         get => _up;
         set
         {
-            if (!_prevUp && value) // Button pressed (false -> true transition)
+            if (!_up && value) // Button pressed (false -> true transition)
                 _interruptController.Request(InterruptType.Joypad);
-            _prevUp = _up;
             _up = value;
         }
     }
@@ -65,9 +58,8 @@ public sealed class Joypad
         get => _down;
         set
         {
-            if (!_prevDown && value) // Button pressed (false -> true transition)
+            if (!_down && value) // Button pressed (false -> true transition)
                 _interruptController.Request(InterruptType.Joypad);
-            _prevDown = _down;
             _down = value;
         }
     }
@@ -77,9 +69,8 @@ public sealed class Joypad
         get => _a;
         set
         {
-            if (!_prevA && value) // Button pressed (false -> true transition)
+            if (!_a && value) // Button pressed (false -> true transition)
                 _interruptController.Request(InterruptType.Joypad);
-            _prevA = _a;
             _a = value;
         }
     }
@@ -89,9 +80,8 @@ public sealed class Joypad
         get => _b;
         set
         {
-            if (!_prevB && value) // Button pressed (false -> true transition)
+            if (!_b && value) // Button pressed (false -> true transition)
                 _interruptController.Request(InterruptType.Joypad);
-            _prevB = _b;
             _b = value;
         }
     }
@@ -101,9 +91,8 @@ public sealed class Joypad
         get => _select;
         set
         {
-            if (!_prevSelect && value) // Button pressed (false -> true transition)
+            if (!_select && value) // Button pressed (false -> true transition)
                 _interruptController.Request(InterruptType.Joypad);
-            _prevSelect = _select;
             _select = value;
         }
     }
@@ -113,9 +102,8 @@ public sealed class Joypad
         get => _start;
         set
         {
-            if (!_prevStart && value) // Button pressed (false -> true transition)
+            if (!_start && value) // Button pressed (false -> true transition)
                 _interruptController.Request(InterruptType.Joypad);
-            _prevStart = _start;
             _start = value;
         }
     }

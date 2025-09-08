@@ -9,7 +9,8 @@ public sealed class Ppu
     public const int ScreenHeight = 144;
 
     private readonly InterruptController _interruptController;
-    private bool _shouldRequestVBlank = true; // Request VBlank on first frame
+    private int _cycleCounter = 0;
+    private const int CyclesPerFrame = 70224; // Game Boy cycles per frame
 
     /// <summary>
     /// 32-bit RGBA frame buffer. Length = 160*144.
@@ -30,6 +31,8 @@ public sealed class Ppu
     /// </summary>
     public bool Step(int cycles)
     {
+        _cycleCounter += cycles;
+        
         // Placeholder: produce a simple pattern to prove rendering.
         for (int y = 0; y < ScreenHeight; y++)
         {
@@ -41,13 +44,14 @@ public sealed class Ppu
             }
         }
 
-        // Request VBlank interrupt at end of frame (placeholder implementation)
-        if (_shouldRequestVBlank)
+        // Request VBlank interrupt only when a full frame has completed
+        if (_cycleCounter >= CyclesPerFrame)
         {
+            _cycleCounter -= CyclesPerFrame;
             _interruptController.Request(InterruptType.VBlank);
-            _shouldRequestVBlank = false; // Only request once per call for placeholder
+            return true; // A frame is ready
         }
 
-        return true; // A frame is ready every call for placeholder
+        return false; // Frame not ready yet
     }
 }
