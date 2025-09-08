@@ -94,8 +94,38 @@ public class CartridgeHeaderTests
         header = CartridgeHeader.Parse(rom);
         Assert.Equal(MbcType.Mbc5, header.GetMbcType());
 
-        // Test unknown type
+        // Test MBC4
+        rom[0x0147] = 0x15;
+        header = CartridgeHeader.Parse(rom);
+        Assert.Equal(MbcType.Mbc4, header.GetMbcType());
+
+        // Test MBC6
+        rom[0x0147] = 0x20;
+        header = CartridgeHeader.Parse(rom);
+        Assert.Equal(MbcType.Mbc6, header.GetMbcType());
+
+        // Test MBC7
+        rom[0x0147] = 0x22;
+        header = CartridgeHeader.Parse(rom);
+        Assert.Equal(MbcType.Mbc7, header.GetMbcType());
+
+        // Test HuC1
         rom[0x0147] = 0xFF;
+        header = CartridgeHeader.Parse(rom);
+        Assert.Equal(MbcType.HuC1, header.GetMbcType());
+
+        // Test HuC3
+        rom[0x0147] = 0xFE;
+        header = CartridgeHeader.Parse(rom);
+        Assert.Equal(MbcType.HuC3, header.GetMbcType());
+
+        // Test TAMA5
+        rom[0x0147] = 0xFD;
+        header = CartridgeHeader.Parse(rom);
+        Assert.Equal(MbcType.Tama5, header.GetMbcType());
+
+        // Test unknown type
+        rom[0x0147] = 0x99;
         header = CartridgeHeader.Parse(rom);
         Assert.Equal(MbcType.Unknown, header.GetMbcType());
     }

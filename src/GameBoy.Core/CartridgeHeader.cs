@@ -132,12 +132,20 @@ public sealed class CartridgeHeader
             0x11 => MbcType.Mbc3,          // MBC3
             0x12 => MbcType.Mbc3,          // MBC3+RAM
             0x13 => MbcType.Mbc3,          // MBC3+RAM+BATTERY
+            0x15 => MbcType.Mbc4,          // MBC4 (known but unsupported)
+            0x16 => MbcType.Mbc4,          // MBC4+RAM (known but unsupported)
+            0x17 => MbcType.Mbc4,          // MBC4+RAM+BATTERY (known but unsupported)
             0x19 => MbcType.Mbc5,          // MBC5
             0x1A => MbcType.Mbc5,          // MBC5+RAM
             0x1B => MbcType.Mbc5,          // MBC5+RAM+BATTERY
             0x1C => MbcType.Mbc5,          // MBC5+RUMBLE
             0x1D => MbcType.Mbc5,          // MBC5+RUMBLE+RAM
             0x1E => MbcType.Mbc5,          // MBC5+RUMBLE+RAM+BATTERY
+            0x20 => MbcType.Mbc6,          // MBC6 (known but unsupported)
+            0x22 => MbcType.Mbc7,          // MBC7+SENSOR+RUMBLE+RAM+BATTERY (known but unsupported)
+            0xFF => MbcType.HuC1,          // HuC1+RAM+BATTERY (known but unsupported)
+            0xFE => MbcType.HuC3,          // HuC3+RAM+BATTERY+RTC (known but unsupported)
+            0xFD => MbcType.Tama5,         // TAMA5 (known but unsupported)
             _ => MbcType.Unknown
         };
     }
@@ -218,5 +226,11 @@ public enum MbcType
     Mbc2,
     Mbc3,
     Mbc5,
+    Mbc4,      // Known but unsupported
+    Mbc6,      // Known but unsupported
+    Mbc7,      // Known but unsupported
+    HuC1,      // Known but unsupported
+    HuC3,      // Known but unsupported
+    Tama5,     // Known but unsupported
     Unknown
 }

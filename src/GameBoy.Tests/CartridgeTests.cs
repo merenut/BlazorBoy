@@ -61,7 +61,7 @@ public class CartridgeTests
     [Fact]
     public void Detect_UnknownCartridgeType_ThrowsException()
     {
-        var rom = CreateRom(0xFF, 0x00, 0x00); // Unknown type
+        var rom = CreateRom(0x99, 0x00, 0x00); // Truly unknown type
 
         var exception = Assert.Throws<NotSupportedException>(() => Cartridge.Detect(rom));
         Assert.Contains("Unknown or unsupported cartridge type", exception.Message);
@@ -131,6 +131,69 @@ public class CartridgeTests
         Assert.Contains($"0x{cartridgeType:X2}", exception.Message);
     }
 
+    [Theory]
+    [InlineData(0x15)] // MBC4
+    [InlineData(0x16)] // MBC4+RAM
+    [InlineData(0x17)] // MBC4+RAM+BATTERY
+    public void Detect_AllMbc4Variants_ThrowsNotSupportedException(byte cartridgeType)
+    {
+        var rom = CreateRom(cartridgeType, 0x01, 0x02);
+
+        var exception = Assert.Throws<NotSupportedException>(() => Cartridge.Detect(rom));
+        Assert.Contains("MBC4 is not yet supported", exception.Message);
+        Assert.Contains($"0x{cartridgeType:X2}", exception.Message);
+    }
+
+    [Fact]
+    public void Detect_Mbc6_ThrowsNotSupportedException()
+    {
+        var rom = CreateRom(0x20, 0x01, 0x02); // MBC6
+
+        var exception = Assert.Throws<NotSupportedException>(() => Cartridge.Detect(rom));
+        Assert.Contains("MBC6 is not yet supported", exception.Message);
+        Assert.Contains("0x20", exception.Message);
+    }
+
+    [Fact]
+    public void Detect_Mbc7_ThrowsNotSupportedException()
+    {
+        var rom = CreateRom(0x22, 0x01, 0x02); // MBC7+SENSOR+RUMBLE+RAM+BATTERY
+
+        var exception = Assert.Throws<NotSupportedException>(() => Cartridge.Detect(rom));
+        Assert.Contains("MBC7 is not yet supported", exception.Message);
+        Assert.Contains("0x22", exception.Message);
+    }
+
+    [Fact]
+    public void Detect_HuC1_ThrowsNotSupportedException()
+    {
+        var rom = CreateRom(0xFF, 0x01, 0x02); // HuC1+RAM+BATTERY
+
+        var exception = Assert.Throws<NotSupportedException>(() => Cartridge.Detect(rom));
+        Assert.Contains("HuC1 is not yet supported", exception.Message);
+        Assert.Contains("0xFF", exception.Message);
+    }
+
+    [Fact]
+    public void Detect_HuC3_ThrowsNotSupportedException()
+    {
+        var rom = CreateRom(0xFE, 0x01, 0x02); // HuC3+RAM+BATTERY+RTC
+
+        var exception = Assert.Throws<NotSupportedException>(() => Cartridge.Detect(rom));
+        Assert.Contains("HuC3 is not yet supported", exception.Message);
+        Assert.Contains("0xFE", exception.Message);
+    }
+
+    [Fact]
+    public void Detect_Tama5_ThrowsNotSupportedException()
+    {
+        var rom = CreateRom(0xFD, 0x01, 0x02); // TAMA5
+
+        var exception = Assert.Throws<NotSupportedException>(() => Cartridge.Detect(rom));
+        Assert.Contains("TAMA5 is not yet supported", exception.Message);
+        Assert.Contains("0xFD", exception.Message);
+    }
+
     [Fact]
     public void Detect_NullRom_ThrowsArgumentException()
     {
@@ -143,7 +206,7 @@ public class CartridgeTests
     [InlineData(0xAA)]
     [InlineData(0xBB)]
     [InlineData(0xCC)]
-    [InlineData(0xFF)]
+    [InlineData(0x99)]
     public void Detect_UnknownCartridgeTypes_ThrowsNotSupportedException(byte cartridgeType)
     {
         var rom = CreateRom(cartridgeType, 0x00, 0x00);
