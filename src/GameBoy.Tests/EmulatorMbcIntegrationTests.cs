@@ -311,13 +311,13 @@ public class EmulatorMbcIntegrationTests
         // Test with battery cartridge but empty RAM
         var romWithBattery = CreateRom(0x03, 0x01, 0x02); // MBC1+RAM+BATTERY
         emulator.LoadRom(romWithBattery);
-        
+
         // Without writing any data, should return null (no data to save)
         Assert.Null(emulator.GetBatteryRam());
 
         // Load null battery data
         emulator.LoadBatteryRam(null); // Should not crash
-        
+
         // Load empty array
         emulator.LoadBatteryRam(new byte[0]); // Should not crash
     }
