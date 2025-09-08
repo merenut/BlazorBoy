@@ -241,9 +241,45 @@ public sealed class Mmu
     /// <summary>
     /// Convenience method to load a ROM into cartridge.
     /// </summary>
+    /// <param name="rom">The ROM data to load.</param>
+    /// <exception cref="ArgumentNullException">Thrown when rom is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when ROM is too small or invalid.</exception>
     public void LoadRom(byte[] rom)
     {
-        Cartridge = Cartridge.Detect(rom);
+        if (rom == null)
+            throw new ArgumentNullException(nameof(rom));
+
+        if (rom.Length < 0x0150)
+            throw new ArgumentException("ROM too small to contain valid header", nameof(rom));
+
+        try
+        {
+            Cartridge = Cartridge.Detect(rom);
+        }
+        catch (NotSupportedException ex)
+        {
+            // Re-throw with more context
+            throw new NotSupportedException($"Failed to load ROM: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets whether external RAM is available and enabled for the current cartridge.
+    /// </summary>
+    public bool IsExternalRamAccessible()
+    {
+        if (Cartridge == null)
+            return false;
+
+        // For battery-backed cartridges, check if they have external RAM
+        if (Cartridge is IBatteryBacked batteryCartridge)
+        {
+            return batteryCartridge.ExternalRamSize > 0;
+        }
+
+        // For non-battery cartridges, external RAM might still be present
+        // This is a basic check - specific MBC implementations handle enable/disable
+        return true;
     }
 
     /// <summary>

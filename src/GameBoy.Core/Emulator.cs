@@ -47,6 +47,36 @@ public sealed class Emulator
     public void LoadRom(byte[] rom) => _mmu.LoadRom(rom);
 
     /// <summary>
+    /// Gets the battery-backed external RAM data for saving.
+    /// </summary>
+    /// <returns>The external RAM data, or null if no battery-backed RAM exists or no data to save.</returns>
+    public byte[]? GetBatteryRam()
+    {
+        if (_mmu.Cartridge is IBatteryBacked batteryCartridge)
+        {
+            return batteryCartridge.GetExternalRam();
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Loads battery-backed external RAM data.
+    /// </summary>
+    /// <param name="data">The external RAM data to load, or null if no save data exists.</param>
+    public void LoadBatteryRam(byte[]? data)
+    {
+        if (_mmu.Cartridge is IBatteryBacked batteryCartridge)
+        {
+            batteryCartridge.LoadExternalRam(data);
+        }
+    }
+
+    /// <summary>
+    /// Gets whether the current cartridge has battery-backed RAM.
+    /// </summary>
+    public bool HasBatteryRam => _mmu.Cartridge is IBatteryBacked batteryCartridge && batteryCartridge.HasBattery;
+
+    /// <summary>
     /// Runs a single CPU step and returns whether a frame is ready.
     /// Accumulates cycles until 70224 cycles reached (one frame).
     /// </summary>
