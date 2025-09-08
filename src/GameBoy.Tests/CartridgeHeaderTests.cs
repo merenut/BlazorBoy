@@ -349,4 +349,47 @@ public class CartridgeHeaderTests
         byte[]? nullRom = null;
         Assert.Throws<ArgumentException>(() => CartridgeHeader.Parse(nullRom!));
     }
+
+    [Fact]
+    public void Integration_CompleteHeaderParsing_WorksEndToEnd()
+    {
+        // Create a realistic ROM with all header fields
+        var rom = new byte[0x20000]; // 128KB ROM
+
+        // Set title "TETRIS"
+        var titleBytes = System.Text.Encoding.ASCII.GetBytes("TETRIS");
+        Array.Copy(titleBytes, 0, rom, 0x0134, titleBytes.Length);
+
+        // Set cartridge type to MBC1+RAM+BATTERY (0x03)
+        rom[0x0147] = 0x03;
+        // Set ROM size to 128KB (0x02)
+        rom[0x0148] = 0x02;
+        // Set RAM size to 8KB (0x02)
+        rom[0x0149] = 0x02;
+        // Set destination code to Non-Japan (0x01)
+        rom[0x014A] = 0x01;
+        // Set old licensee code
+        rom[0x014B] = 0x33;
+        // Set mask ROM version
+        rom[0x014C] = 0x01;
+
+        // Parse header
+        var header = CartridgeHeader.Parse(rom);
+
+        // Verify all fields are parsed correctly
+        Assert.Equal("TETRIS", header.Title);
+        Assert.Equal(MbcType.Mbc1, header.GetMbcType());
+        Assert.Equal(128 * 1024, header.RomSize);
+        Assert.Equal(8, header.RomBankCount);
+        Assert.Equal(8 * 1024, header.RamSize);
+        Assert.Equal(1, header.RamBankCount);
+        Assert.True(header.HasBattery());
+        Assert.False(header.HasRtc());
+        Assert.Equal(0x01, header.DestinationCode);
+        Assert.True(header.IsValidHeader());
+
+        // Test Cartridge.Detect integration
+        var cartridge = Cartridge.Detect(rom);
+        Assert.Equal("Mbc1", cartridge.GetType().Name);
+    }
 }
