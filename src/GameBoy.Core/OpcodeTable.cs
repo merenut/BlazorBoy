@@ -387,11 +387,267 @@ public static class OpcodeTable
             cpu.Regs.A = cpu.ReadImm16Addr();
             return 16;
         });
+
+        // 16-bit Load operations
+        // 0x01: LD BC,d16
+        Primary[0x01] = new Instruction("LD BC,d16", 3, 12, OperandType.Immediate16, cpu =>
+        {
+            cpu.Regs.BC = cpu.ReadImm16();
+            return 12;
+        });
+
+        // 0x11: LD DE,d16
+        Primary[0x11] = new Instruction("LD DE,d16", 3, 12, OperandType.Immediate16, cpu =>
+        {
+            cpu.Regs.DE = cpu.ReadImm16();
+            return 12;
+        });
+
+        // 0x21: LD HL,d16
+        Primary[0x21] = new Instruction("LD HL,d16", 3, 12, OperandType.Immediate16, cpu =>
+        {
+            cpu.Regs.HL = cpu.ReadImm16();
+            return 12;
+        });
+
+        // 0x31: LD SP,d16
+        Primary[0x31] = new Instruction("LD SP,d16", 3, 12, OperandType.Immediate16, cpu =>
+        {
+            cpu.Regs.SP = cpu.ReadImm16();
+            return 12;
+        });
+
+        // INC operations
+        // 0x03: INC BC
+        Primary[0x03] = new Instruction("INC BC", 1, 8, OperandType.Register, cpu =>
+        {
+            cpu.Regs.BC++;
+            return 8;
+        });
+
+        // 0x04: INC B
+        Primary[0x04] = new Instruction("INC B", 1, 4, OperandType.Register, cpu =>
+        {
+            cpu.IncReg8(ref cpu.Regs.B);
+            return 4;
+        });
+
+        // 0x0C: INC C
+        Primary[0x0C] = new Instruction("INC C", 1, 4, OperandType.Register, cpu =>
+        {
+            cpu.IncReg8(ref cpu.Regs.C);
+            return 4;
+        });
+
+        // DEC operations
+        // 0x05: DEC B
+        Primary[0x05] = new Instruction("DEC B", 1, 4, OperandType.Register, cpu =>
+        {
+            cpu.DecReg8(ref cpu.Regs.B);
+            return 4;
+        });
+
+        // 0x0B: DEC BC
+        Primary[0x0B] = new Instruction("DEC BC", 1, 8, OperandType.Register, cpu =>
+        {
+            cpu.Regs.BC--;
+            return 8;
+        });
+
+        // 0x0D: DEC C
+        Primary[0x0D] = new Instruction("DEC C", 1, 4, OperandType.Register, cpu =>
+        {
+            cpu.DecReg8(ref cpu.Regs.C);
+            return 4;
+        });
+
+        // Jump operations
+        // 0x18: JR r8 (relative jump)
+        Primary[0x18] = new Instruction("JR r8", 2, 12, OperandType.Relative8, cpu =>
+        {
+            cpu.JumpRelative();
+            return 12;
+        });
+
+        // 0xC3: JP a16 (absolute jump)
+        Primary[0xC3] = new Instruction("JP a16", 3, 16, OperandType.Immediate16, cpu =>
+        {
+            cpu.Regs.PC = cpu.ReadImm16();
+            return 16;
+        });
+
+        // 0xE9: JP (HL) (jump to address in HL)
+        Primary[0xE9] = new Instruction("JP (HL)", 1, 4, OperandType.Register, cpu =>
+        {
+            cpu.Regs.PC = cpu.Regs.HL;
+            return 4;
+        });
+
+        // Conditional jumps
+        // 0x20: JR NZ,r8
+        Primary[0x20] = new Instruction("JR NZ,r8", 2, 8, OperandType.Relative8, cpu =>
+        {
+            if (!cpu.GetZeroFlag())
+            {
+                cpu.JumpRelative();
+                return 12;
+            }
+            cpu.Regs.PC++; // Skip operand
+            return 8;
+        });
+
+        // 0x28: JR Z,r8
+        Primary[0x28] = new Instruction("JR Z,r8", 2, 8, OperandType.Relative8, cpu =>
+        {
+            if (cpu.GetZeroFlag())
+            {
+                cpu.JumpRelative();
+                return 12;
+            }
+            cpu.Regs.PC++; // Skip operand
+            return 8;
+        });
+
+        // Stack operations
+        // 0xC1: POP BC
+        Primary[0xC1] = new Instruction("POP BC", 1, 12, OperandType.Register, cpu =>
+        {
+            cpu.Regs.BC = cpu.PopStack();
+            return 12;
+        });
+
+        // 0xC5: PUSH BC
+        Primary[0xC5] = new Instruction("PUSH BC", 1, 16, OperandType.Register, cpu =>
+        {
+            cpu.PushStack(cpu.Regs.BC);
+            return 16;
+        });
+
+        // Call operations
+        // 0xCD: CALL a16
+        Primary[0xCD] = new Instruction("CALL a16", 3, 24, OperandType.Immediate16, cpu =>
+        {
+            ushort addr = cpu.ReadImm16();
+            cpu.PushStack(cpu.Regs.PC);
+            cpu.Regs.PC = addr;
+            return 24;
+        });
+
+        // Return operations
+        // 0xC9: RET
+        Primary[0xC9] = new Instruction("RET", 1, 16, OperandType.None, cpu =>
+        {
+            cpu.Regs.PC = cpu.PopStack();
+            return 16;
+        });
+
+        // Miscellaneous operations
+        // 0x76: HALT
+        Primary[0x76] = new Instruction("HALT", 1, 4, OperandType.None, cpu =>
+        {
+            cpu.SetHalted(true);
+            return 4;
+        });
+
+        // 0xF3: DI (disable interrupts)
+        Primary[0xF3] = new Instruction("DI", 1, 4, OperandType.None, cpu =>
+        {
+            cpu.InterruptsEnabled = false;
+            return 4;
+        });
+
+        // 0xFB: EI (enable interrupts)
+        Primary[0xFB] = new Instruction("EI", 1, 4, OperandType.None, cpu =>
+        {
+            cpu.InterruptsEnabled = true;
+            return 4;
+        });
     }
 
     private static void InitializeCBTable()
     {
-        // CB-prefixed instructions will be added later
-        // For now, leave empty
+        // CB-prefixed instructions - Bit operations, rotates, and shifts
+
+        // RLC (Rotate Left Circular) operations
+        // 0x00: RLC B
+        CB[0x00] = new Instruction("RLC B", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.Regs.B = cpu.RotateLeftCircular(cpu.Regs.B);
+            return 8;
+        });
+
+        // 0x01: RLC C
+        CB[0x01] = new Instruction("RLC C", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.Regs.C = cpu.RotateLeftCircular(cpu.Regs.C);
+            return 8;
+        });
+
+        // BIT operations (Test bit)
+        // 0x40: BIT 0,B
+        CB[0x40] = new Instruction("BIT 0,B", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.TestBit(cpu.Regs.B, 0);
+            return 8;
+        });
+
+        // 0x41: BIT 0,C
+        CB[0x41] = new Instruction("BIT 0,C", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.TestBit(cpu.Regs.C, 0);
+            return 8;
+        });
+
+        // 0x7C: BIT 7,H
+        CB[0x7C] = new Instruction("BIT 7,H", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.TestBit(cpu.Regs.H, 7);
+            return 8;
+        });
+
+        // SET operations (Set bit)
+        // 0xC0: SET 0,B
+        CB[0xC0] = new Instruction("SET 0,B", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.Regs.B = cpu.SetBit(cpu.Regs.B, 0);
+            return 8;
+        });
+
+        // 0xC1: SET 0,C
+        CB[0xC1] = new Instruction("SET 0,C", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.Regs.C = cpu.SetBit(cpu.Regs.C, 0);
+            return 8;
+        });
+
+        // RES operations (Reset bit)
+        // 0x80: RES 0,B
+        CB[0x80] = new Instruction("RES 0,B", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.Regs.B = cpu.ResetBit(cpu.Regs.B, 0);
+            return 8;
+        });
+
+        // 0x81: RES 0,C
+        CB[0x81] = new Instruction("RES 0,C", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.Regs.C = cpu.ResetBit(cpu.Regs.C, 0);
+            return 8;
+        });
+
+        // SRL (Shift Right Logical) operations
+        // 0x38: SRL B
+        CB[0x38] = new Instruction("SRL B", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.Regs.B = cpu.ShiftRightLogical(cpu.Regs.B);
+            return 8;
+        });
+
+        // 0x39: SRL C
+        CB[0x39] = new Instruction("SRL C", 2, 8, OperandType.Register, cpu =>
+        {
+            cpu.Regs.C = cpu.ShiftRightLogical(cpu.Regs.C);
+            return 8;
+        });
     }
 }

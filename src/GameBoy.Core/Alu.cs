@@ -176,4 +176,82 @@ public static class Alu
         var subResult = Subtract(a, operand);
         return new AluResult(a, subResult.Zero, subResult.Negative, subResult.HalfCarry, subResult.Carry);
     }
+
+    /// <summary>
+    /// INC operation: operand + 1 (8-bit increment)
+    /// Z: Set if result is 0
+    /// N: Reset (0)
+    /// H: Set if carry from bit 3
+    /// C: Not affected
+    /// </summary>
+    public static AluResult Inc8(byte operand)
+    {
+        int result = operand + 1;
+
+        bool zero = (result & 0xFF) == 0;
+        bool negative = false; // Always reset for INC
+        bool halfCarry = (operand & 0x0F) == 0x0F; // Carry from bit 3
+        // Carry flag is not affected by INC
+
+        return new AluResult((byte)(result & 0xFF), zero, negative, halfCarry, false);
+    }
+
+    /// <summary>
+    /// DEC operation: operand - 1 (8-bit decrement)
+    /// Z: Set if result is 0
+    /// N: Set (1)
+    /// H: Set if no borrow from bit 4
+    /// C: Not affected
+    /// </summary>
+    public static AluResult Dec8(byte operand)
+    {
+        int result = operand - 1;
+
+        bool zero = (result & 0xFF) == 0;
+        bool negative = true; // Always set for DEC
+        bool halfCarry = (operand & 0x0F) == 0; // No borrow from bit 4
+        // Carry flag is not affected by DEC
+
+        return new AluResult((byte)(result & 0xFF), zero, negative, halfCarry, false);
+    }
+
+    /// <summary>
+    /// RLC operation: Rotate left circular (9-bit rotation through carry)
+    /// Z: Set if result is 0
+    /// N: Reset (0)
+    /// H: Reset (0)
+    /// C: Old bit 7
+    /// </summary>
+    public static AluResult RotateLeftCircular(byte operand)
+    {
+        bool oldBit7 = (operand & 0x80) != 0;
+        byte result = (byte)((operand << 1) | (oldBit7 ? 1 : 0));
+
+        bool zero = result == 0;
+        bool negative = false; // Always reset for rotates
+        bool halfCarry = false; // Always reset for rotates
+        bool carry = oldBit7; // Old bit 7 goes to carry
+
+        return new AluResult(result, zero, negative, halfCarry, carry);
+    }
+
+    /// <summary>
+    /// SRL operation: Shift right logical
+    /// Z: Set if result is 0
+    /// N: Reset (0)
+    /// H: Reset (0)
+    /// C: Old bit 0
+    /// </summary>
+    public static AluResult ShiftRightLogical(byte operand)
+    {
+        bool oldBit0 = (operand & 0x01) != 0;
+        byte result = (byte)(operand >> 1);
+
+        bool zero = result == 0;
+        bool negative = false; // Always reset for shifts
+        bool halfCarry = false; // Always reset for shifts
+        bool carry = oldBit0; // Old bit 0 goes to carry
+
+        return new AluResult(result, zero, negative, halfCarry, carry);
+    }
 }

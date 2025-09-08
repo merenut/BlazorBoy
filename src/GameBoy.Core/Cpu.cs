@@ -442,4 +442,126 @@ public sealed class Cpu
     }
 
     #endregion
+
+    #region Additional CPU Operations
+
+    /// <summary>
+    /// Increments an 8-bit register and sets flags.
+    /// </summary>
+    internal void IncReg8(ref byte register)
+    {
+        var result = Alu.Inc8(register);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, GetCarryFlag());
+        register = result.Result;
+    }
+
+    /// <summary>
+    /// Decrements an 8-bit register and sets flags.
+    /// </summary>
+    internal void DecReg8(ref byte register)
+    {
+        var result = Alu.Dec8(register);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, GetCarryFlag());
+        register = result.Result;
+    }
+
+    /// <summary>
+    /// Performs a relative jump by reading an 8-bit signed offset.
+    /// </summary>
+    internal void JumpRelative()
+    {
+        sbyte offset = (sbyte)ReadImm8();
+        Regs.PC = (ushort)(Regs.PC + offset);
+    }
+
+    /// <summary>
+    /// Pushes a 16-bit value onto the stack.
+    /// </summary>
+    internal void PushStack(ushort value)
+    {
+        Regs.SP -= 2;
+        _mmu.WriteWord(Regs.SP, value);
+    }
+
+    /// <summary>
+    /// Pops a 16-bit value from the stack.
+    /// </summary>
+    internal ushort PopStack()
+    {
+        ushort value = _mmu.ReadWord(Regs.SP);
+        Regs.SP += 2;
+        return value;
+    }
+
+    /// <summary>
+    /// Sets or clears the halted state of the CPU.
+    /// </summary>
+    internal void SetHalted(bool halted)
+    {
+        // For now, just a placeholder implementation
+        // In a full implementation, this would control CPU execution state
+    }
+
+    /// <summary>
+    /// Gets the value of the Zero flag.
+    /// </summary>
+    internal bool GetZeroFlag()
+    {
+        return (Regs.F & 0x80) != 0;
+    }
+
+    /// <summary>
+    /// Gets the value of the Carry flag.
+    /// </summary>
+    internal bool GetCarryFlag()
+    {
+        return (Regs.F & 0x10) != 0;
+    }
+
+    /// <summary>
+    /// Rotates a byte left circularly and sets flags.
+    /// </summary>
+    internal byte RotateLeftCircular(byte value)
+    {
+        var result = Alu.RotateLeftCircular(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Tests a specific bit in a byte and sets the Zero flag accordingly.
+    /// </summary>
+    internal void TestBit(byte value, int bitIndex)
+    {
+        bool bitSet = (value & (1 << bitIndex)) != 0;
+        SetFlags(!bitSet, true, true, GetCarryFlag()); // Z=!bit, N=1, H=1, C=unchanged
+    }
+
+    /// <summary>
+    /// Sets a specific bit in a byte.
+    /// </summary>
+    internal byte SetBit(byte value, int bitIndex)
+    {
+        return (byte)(value | (1 << bitIndex));
+    }
+
+    /// <summary>
+    /// Resets (clears) a specific bit in a byte.
+    /// </summary>
+    internal byte ResetBit(byte value, int bitIndex)
+    {
+        return (byte)(value & ~(1 << bitIndex));
+    }
+
+    /// <summary>
+    /// Shifts a byte right logically and sets flags.
+    /// </summary>
+    internal byte ShiftRightLogical(byte value)
+    {
+        var result = Alu.ShiftRightLogical(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    #endregion
 }
