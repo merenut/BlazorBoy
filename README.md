@@ -41,7 +41,7 @@ The Game Boy LR35902 CPU instruction set implementation is **fully complete** as
 - ✅ **Primary Opcodes**: 245/245 valid opcodes implemented (100%)
 - ✅ **CB-Prefixed Opcodes**: 256/256 opcodes implemented (100%)
 - ✅ **Invalid Opcodes**: All 11 invalid opcodes properly handled
-- ✅ **Test Coverage**: 411 tests passing, including comprehensive opcode validation
+- ✅ **Test Coverage**: 578 tests passing, including comprehensive opcode validation and interrupt test ROM harnesses
 
 For detailed instruction coverage analysis, see:
 - [`docs/InstructionCoverageSummary.md`](docs/InstructionCoverageSummary.md) - Quick reference coverage tables by category
