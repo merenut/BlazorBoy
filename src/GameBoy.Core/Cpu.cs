@@ -743,5 +743,95 @@ public sealed class Cpu
         return result.Result;
     }
 
+    /// <summary>
+    /// Rotates A left circular (RLCA instruction).
+    /// </summary>
+    internal void RotateALeftCircular()
+    {
+        var result = Alu.RotateLeftCircular(Regs.A);
+        // RLCA always resets Zero flag
+        SetFlags(false, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Rotates A right circular (RRCA instruction).
+    /// </summary>
+    internal void RotateARightCircular()
+    {
+        var result = Alu.RotateRightCircular(Regs.A);
+        // RRCA always resets Zero flag
+        SetFlags(false, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Rotates A left through carry (RLA instruction).
+    /// </summary>
+    internal void RotateALeftThroughCarry()
+    {
+        var result = Alu.RotateLeft(Regs.A, GetCarryFlag());
+        // RLA always resets Zero flag
+        SetFlags(false, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Rotates A right through carry (RRA instruction).
+    /// </summary>
+    internal void RotateARightThroughCarry()
+    {
+        var result = Alu.RotateRight(Regs.A, GetCarryFlag());
+        // RRA always resets Zero flag
+        SetFlags(false, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Adds a 16-bit value to HL and sets flags.
+    /// </summary>
+    internal void AddToHL(ushort value)
+    {
+        int result = Regs.HL + value;
+        bool carry = result > 0xFFFF;
+        bool halfCarry = (Regs.HL & 0x0FFF) + (value & 0x0FFF) > 0x0FFF;
+        
+        Regs.HL = (ushort)(result & 0xFFFF);
+        
+        // ADD HL,rr: N=0, H=half carry from bit 11, C=carry from bit 15, Z=unchanged
+        SetFlags(GetZeroFlag(), false, halfCarry, carry);
+    }
+
+    /// <summary>
+    /// Stores SP at immediate 16-bit address.
+    /// </summary>
+    internal void StoreSPAtImm16()
+    {
+        ushort addr = ReadImm16();
+        _mmu.WriteWord(addr, Regs.SP);
+    }
+
+    /// <summary>
+    /// Increments value at (HL).
+    /// </summary>
+    internal void IncMemoryHL()
+    {
+        byte value = ReadHL();
+        var result = Alu.Inc8(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, GetCarryFlag());
+        WriteHL(result.Result);
+    }
+
+    /// <summary>
+    /// Decrements value at (HL).
+    /// </summary>
+    internal void DecMemoryHL()
+    {
+        byte value = ReadHL();
+        var result = Alu.Dec8(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, GetCarryFlag());
+        WriteHL(result.Result);
+    }
+
     #endregion
 }

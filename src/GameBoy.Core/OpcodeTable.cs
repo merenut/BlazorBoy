@@ -569,29 +569,28 @@ public static class OpcodeTable
         // 0x07: RLCA
         Primary[0x07] = new Instruction("RLCA", 1, 4, OperandType.None, cpu =>
         {
-            // Placeholder: Rotate A left circular
+            cpu.RotateALeftCircular();
             return 4;
         });
 
         // 0x08: LD (a16),SP
         Primary[0x08] = new Instruction("LD (a16),SP", 3, 20, OperandType.MemoryImmediate16, cpu =>
         {
-            // Placeholder: Store SP at immediate 16-bit address
-            cpu.ReadImm16(); // consume operand
+            cpu.StoreSPAtImm16();
             return 20;
         });
 
         // 0x09: ADD HL,BC
         Primary[0x09] = new Instruction("ADD HL,BC", 1, 8, OperandType.Register, cpu =>
         {
-            // Placeholder: Add BC to HL
+            cpu.AddToHL(cpu.Regs.BC);
             return 8;
         });
 
         // 0x0F: RRCA
         Primary[0x0F] = new Instruction("RRCA", 1, 4, OperandType.None, cpu =>
         {
-            // Placeholder: Rotate A right circular
+            cpu.RotateARightCircular();
             return 4;
         });
 
@@ -626,14 +625,14 @@ public static class OpcodeTable
         // 0x17: RLA
         Primary[0x17] = new Instruction("RLA", 1, 4, OperandType.None, cpu =>
         {
-            // Placeholder: Rotate A left through carry
+            cpu.RotateALeftThroughCarry();
             return 4;
         });
 
         // 0x19: ADD HL,DE
         Primary[0x19] = new Instruction("ADD HL,DE", 1, 8, OperandType.Register, cpu =>
         {
-            // Placeholder: Add DE to HL
+            cpu.AddToHL(cpu.Regs.DE);
             return 8;
         });
 
@@ -661,7 +660,7 @@ public static class OpcodeTable
         // 0x1F: RRA
         Primary[0x1F] = new Instruction("RRA", 1, 4, OperandType.None, cpu =>
         {
-            // Placeholder: Rotate A right through carry
+            cpu.RotateARightThroughCarry();
             return 4;
         });
 
@@ -696,7 +695,7 @@ public static class OpcodeTable
         // 0x29: ADD HL,HL
         Primary[0x29] = new Instruction("ADD HL,HL", 1, 8, OperandType.Register, cpu =>
         {
-            // Placeholder: Add HL to itself (left shift)
+            cpu.AddToHL(cpu.Regs.HL);
             return 8;
         });
 
@@ -751,14 +750,14 @@ public static class OpcodeTable
         // 0x34: INC (HL)
         Primary[0x34] = new Instruction("INC (HL)", 1, 12, OperandType.Memory, cpu =>
         {
-            // Placeholder: Increment value at (HL)
+            cpu.IncMemoryHL();
             return 12;
         });
 
         // 0x35: DEC (HL)
         Primary[0x35] = new Instruction("DEC (HL)", 1, 12, OperandType.Memory, cpu =>
         {
-            // Placeholder: Decrement value at (HL)
+            cpu.DecMemoryHL();
             return 12;
         });
 
@@ -784,7 +783,7 @@ public static class OpcodeTable
         // 0x39: ADD HL,SP
         Primary[0x39] = new Instruction("ADD HL,SP", 1, 8, OperandType.Register, cpu =>
         {
-            // Placeholder: Add SP to HL
+            cpu.AddToHL(cpu.Regs.SP);
             return 8;
         });
 
@@ -1012,9 +1011,18 @@ public static class OpcodeTable
         Primary[0xEE] = new Instruction("XOR d8", 2, 8, OperandType.Immediate8, cpu => { byte operand = cpu.ReadImm8(); cpu.XorWithA(operand); return 8; });
         Primary[0xEF] = new Instruction("RST 28H", 1, 16, OperandType.None, cpu => { cpu.PushStack(cpu.Regs.PC); cpu.Regs.PC = 0x28; return 16; });
 
-        Primary[0xF1] = new Instruction("POP AF", 1, 12, OperandType.Register, cpu => { /* POP AF with flag handling */ return 12; });
+        Primary[0xF1] = new Instruction("POP AF", 1, 12, OperandType.Register, cpu => { 
+            ushort value = cpu.PopStack();
+            cpu.Regs.A = (byte)(value >> 8);
+            cpu.Regs.F = (byte)(value & 0xF0); // Only upper 4 bits of F are writable
+            return 12; 
+        });
         // 0xF4 is invalid - left as null
-        Primary[0xF5] = new Instruction("PUSH AF", 1, 16, OperandType.Register, cpu => { /* PUSH AF */ return 16; });
+        Primary[0xF5] = new Instruction("PUSH AF", 1, 16, OperandType.Register, cpu => { 
+            ushort value = (ushort)((cpu.Regs.A << 8) | cpu.Regs.F);
+            cpu.PushStack(value);
+            return 16; 
+        });
         Primary[0xF6] = new Instruction("OR d8", 2, 8, OperandType.Immediate8, cpu => { byte operand = cpu.ReadImm8(); cpu.OrWithA(operand); return 8; });
         Primary[0xF7] = new Instruction("RST 30H", 1, 16, OperandType.None, cpu => { cpu.PushStack(cpu.Regs.PC); cpu.Regs.PC = 0x30; return 16; });
         Primary[0xF8] = new Instruction("LD HL,SP+r8", 2, 12, OperandType.Relative8, cpu => { cpu.ReadImm8(); return 12; });

@@ -343,4 +343,87 @@ public class InstructionGroupTests
     }
 
     #endregion
+
+    #region Rotate A Instructions Tests
+
+    [Fact]
+    public void RLCA_RotatesALeftCircular()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+        cpu.Regs.PC = 0xC000;
+        cpu.Regs.A = 0x85; // 10000101
+
+        // Test RLCA (0x07)
+        mmu.WriteByte(0xC000, 0x07);
+        var cycles = cpu.Step();
+
+        Assert.Equal(0x0B, cpu.Regs.A); // 00001011
+        Assert.Equal(4, cycles);
+        Assert.True(cpu.GetCarryFlag()); // Old bit 7 goes to carry
+        Assert.False(cpu.GetZeroFlag()); // RLCA never sets Z
+    }
+
+    [Fact]
+    public void ADD_HL_BC_AddsCorrectly()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+        cpu.Regs.PC = 0xC000;
+        cpu.Regs.HL = 0x8A23;
+        cpu.Regs.BC = 0x0605;
+
+        // Test ADD HL,BC (0x09)
+        mmu.WriteByte(0xC000, 0x09);
+        var cycles = cpu.Step();
+
+        Assert.Equal(0x9028, cpu.Regs.HL);
+        Assert.Equal(8, cycles);
+        Assert.False(cpu.GetCarryFlag()); // No carry from bit 15
+    }
+
+    [Fact]
+    public void INC_HL_Memory_IncrementsMemoryValue()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+        cpu.Regs.PC = 0xC000;
+        cpu.Regs.HL = 0xD000;
+        mmu.WriteByte(0xD000, 0xFF);
+
+        // Test INC (HL) (0x34)
+        mmu.WriteByte(0xC000, 0x34);
+        var cycles = cpu.Step();
+
+        Assert.Equal(0x00, mmu.ReadByte(0xD000));
+        Assert.Equal(12, cycles);
+        Assert.True(cpu.GetZeroFlag()); // Result is 0
+    }
+
+    [Fact]
+    public void PUSH_POP_AF_HandlesFlags()
+    {
+        var mmu = new Mmu();
+        var cpu = new Cpu(mmu);
+        cpu.Regs.PC = 0xC000;
+        cpu.Regs.SP = 0xFFFE;
+        cpu.Regs.A = 0x42;
+        cpu.Regs.F = 0xF0; // All flags set
+
+        // Test PUSH AF (0xF5)
+        mmu.WriteByte(0xC000, 0xF5);
+        mmu.WriteByte(0xC001, 0xF1); // POP AF
+        
+        var cycles1 = cpu.Step(); // PUSH AF
+        cpu.Regs.A = 0x00; // Modify A
+        cpu.Regs.F = 0x00; // Clear flags
+        var cycles2 = cpu.Step(); // POP AF
+
+        Assert.Equal(0x42, cpu.Regs.A); // A restored
+        Assert.Equal(0xF0, cpu.Regs.F); // Flags restored
+        Assert.Equal(16, cycles1);
+        Assert.Equal(12, cycles2);
+    }
+
+    #endregion
 }
