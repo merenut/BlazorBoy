@@ -12,6 +12,10 @@ BlazorBoy includes automated test harnesses for running Game Boy test ROMs to va
 
 The Blargg test ROMs are comprehensive CPU validation tests that exercise every Game Boy instruction and verify correct behavior. These tests are essential for ensuring CPU implementation accuracy.
 
+### Interrupt Test ROMs (Specialized Testing)
+
+BlazorBoy includes specialized harnesses for interrupt-focused test ROMs from both Blargg and Mooneye test suites. For detailed information about interrupt testing, see the [Interrupt Test ROM Documentation](InterruptTestROMs.md).
+
 #### Required ROMs for Phase 3 (CPU Core Implementation)
 
 | ROM File | Purpose | Expected Results |
