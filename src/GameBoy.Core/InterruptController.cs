@@ -2,14 +2,39 @@ namespace GameBoy.Core;
 
 /// <summary>
 /// Represents the five core Game Boy interrupt types in priority order.
+/// Use with InterruptController.Request() to trigger interrupts from hardware components.
 /// </summary>
 public enum InterruptType : byte
 {
-    VBlank = 0,    // Bit 0, Vector 0x0040, Highest Priority
-    LCDStat = 1,   // Bit 1, Vector 0x0048
-    Timer = 2,     // Bit 2, Vector 0x0050
-    Serial = 3,    // Bit 3, Vector 0x0058
-    Joypad = 4     // Bit 4, Vector 0x0060, Lowest Priority
+    /// <summary>
+    /// VBlank interrupt (Bit 0, Vector 0x0040, Highest Priority).
+    /// Triggered by PPU at the start of vertical blanking period.
+    /// </summary>
+    VBlank = 0,
+
+    /// <summary>
+    /// LCD STAT interrupt (Bit 1, Vector 0x0048).
+    /// Triggered by PPU on LCD status changes (mode transitions, LYC=LY, etc).
+    /// </summary>
+    LCDStat = 1,
+
+    /// <summary>
+    /// Timer interrupt (Bit 2, Vector 0x0050).
+    /// Triggered by Timer when TIMA register overflows.
+    /// </summary>
+    Timer = 2,
+
+    /// <summary>
+    /// Serial interrupt (Bit 3, Vector 0x0058).
+    /// Triggered by Serial port when data transfer completes.
+    /// </summary>
+    Serial = 3,
+
+    /// <summary>
+    /// Joypad interrupt (Bit 4, Vector 0x0060, Lowest Priority).
+    /// Triggered by Joypad when a button is pressed.
+    /// </summary>
+    Joypad = 4
 }
 
 /// <summary>
@@ -49,6 +74,13 @@ public sealed class InterruptController
 
     /// <summary>
     /// Requests an interrupt by setting the corresponding bit in the IF register.
+    /// 
+    /// Usage examples for each component:
+    /// - PPU: Request VBlank interrupt at end of frame: interruptController.Request(InterruptType.VBlank)
+    /// - PPU: Request LCD STAT interrupt on mode changes: interruptController.Request(InterruptType.LCDStat)
+    /// - Timer: Request Timer interrupt on TIMA overflow: interruptController.Request(InterruptType.Timer)
+    /// - Serial: Request Serial interrupt on transfer complete: interruptController.Request(InterruptType.Serial)
+    /// - Joypad: Request Joypad interrupt on button press: interruptController.Request(InterruptType.Joypad)
     /// </summary>
     /// <param name="interruptType">The type of interrupt to request.</param>
     public void Request(InterruptType interruptType)
