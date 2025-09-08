@@ -1,5 +1,6 @@
 using System;
 using GameBoy.Core;
+using Xunit;
 
 namespace GameBoy.Tests;
 
@@ -348,5 +349,164 @@ public class CartridgeHeaderTests
     {
         byte[]? nullRom = null;
         Assert.Throws<ArgumentException>(() => CartridgeHeader.Parse(nullRom!));
+    }
+
+    [Theory]
+    [InlineData(0x52, 1152 * 1024)]  // 1.1MB (72 banks)
+    [InlineData(0x53, 1280 * 1024)]  // 1.2MB (80 banks)
+    [InlineData(0x54, 1536 * 1024)]  // 1.5MB (96 banks)
+    public void RomSize_CalculatesCorrectSizeForSpecialCodes(byte code, int expectedSize)
+    {
+        var rom = new byte[0x8000];
+        rom[0x0148] = code;
+
+        var header = CartridgeHeader.Parse(rom);
+
+        Assert.Equal(expectedSize, header.RomSize);
+        Assert.Equal(expectedSize / 0x4000, header.RomBankCount);
+    }
+
+    [Theory]
+    [InlineData(0x09)]  // Invalid ROM size code
+    [InlineData(0x51)]  // Invalid ROM size code
+    [InlineData(0x55)]  // Invalid ROM size code
+    [InlineData(0xFF)]  // Invalid ROM size code
+    public void RomSize_InvalidCodes_DefaultsTo32KB(byte code)
+    {
+        var rom = new byte[0x8000];
+        rom[0x0148] = code;
+
+        var header = CartridgeHeader.Parse(rom);
+
+        Assert.Equal(32 * 1024, header.RomSize);
+        Assert.Equal(2, header.RomBankCount);
+    }
+
+    [Theory]
+    [InlineData(0x06)]  // Invalid RAM size code
+    [InlineData(0x99)]  // Invalid RAM size code
+    [InlineData(0xFF)]  // Invalid RAM size code
+    public void RamSize_InvalidCodes_DefaultsToZero(byte code)
+    {
+        var rom = new byte[0x8000];
+        rom[0x0149] = code;
+
+        var header = CartridgeHeader.Parse(rom);
+
+        Assert.Equal(0, header.RamSize);
+        Assert.Equal(0, header.RamBankCount);
+    }
+
+    [Fact]
+    public void IsHeaderChecksumValid_ValidChecksum_ReturnsTrue()
+    {
+        var rom = new byte[0x8000];
+
+        // Set up a header with known values
+        var titleBytes = System.Text.Encoding.ASCII.GetBytes("TETRIS");
+        Array.Copy(titleBytes, 0, rom, 0x0134, titleBytes.Length);
+        rom[0x0147] = 0x01; // MBC1
+        rom[0x0148] = 0x00; // 32KB ROM
+        rom[0x0149] = 0x00; // No RAM
+        rom[0x014A] = 0x01; // Non-Japan
+        rom[0x014B] = 0x33; // Old licensee
+        rom[0x014C] = 0x00; // Version
+
+        // Calculate the correct checksum
+        byte checksum = 0;
+        for (int i = 0x0134; i <= 0x014C; i++)
+        {
+            checksum = (byte)(checksum - rom[i] - 1);
+        }
+        rom[0x014D] = checksum;
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.True(header.IsHeaderChecksumValid(rom));
+    }
+
+    [Fact]
+    public void IsHeaderChecksumValid_InvalidChecksum_ReturnsFalse()
+    {
+        var rom = new byte[0x8000];
+
+        // Set up a header with known values
+        rom[0x0147] = 0x01; // MBC1
+        rom[0x0148] = 0x00; // 32KB ROM
+        rom[0x0149] = 0x00; // No RAM
+        rom[0x014D] = 0x42; // Incorrect checksum
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.False(header.IsHeaderChecksumValid(rom));
+    }
+
+    [Fact]
+    public void GlobalChecksum_ParsedCorrectly()
+    {
+        var rom = new byte[0x8000];
+        rom[0x014E] = 0x34; // Low byte
+        rom[0x014F] = 0x12; // High byte
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.Equal(0x1234, header.GlobalChecksum);
+    }
+
+    [Theory]
+    [InlineData(0x02)]  // Invalid destination code
+    [InlineData(0xFF)]  // Invalid destination code
+    public void IsValidHeader_InvalidDestinationCodes_ReturnsFalse(byte destinationCode)
+    {
+        var rom = new byte[0x8000];
+        rom[0x0148] = 0x02; // Valid ROM size
+        rom[0x0149] = 0x02; // Valid RAM size
+        rom[0x014A] = destinationCode;
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.False(header.IsValidHeader());
+    }
+
+    [Theory]
+    [InlineData(0x09)]  // Invalid ROM size (beyond standard range)
+    [InlineData(0x51)]  // Invalid ROM size
+    [InlineData(0x55)]  // Invalid ROM size
+    public void IsValidHeader_InvalidRomSizeCodes_ReturnsFalse(byte romSizeCode)
+    {
+        var rom = new byte[0x8000];
+        rom[0x0148] = romSizeCode;
+        rom[0x0149] = 0x02; // Valid RAM size
+        rom[0x014A] = 0x01; // Valid destination code
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.False(header.IsValidHeader());
+    }
+
+    [Fact]
+    public void Title_MaxLength16Characters_TruncatesCorrectly()
+    {
+        var rom = new byte[0x8000];
+
+        // Set up title with exactly 16 characters (no null termination)
+        var titleBytes = System.Text.Encoding.ASCII.GetBytes("ABCDEFGHIJKLMNOP");
+        Array.Copy(titleBytes, 0, rom, 0x0134, 16);
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.Equal("ABCDEFGHIJKLMNOP", header.Title);
+    }
+
+    [Fact]
+    public void Title_WithSpecialCharacters_HandlesCorrectly()
+    {
+        var rom = new byte[0x8000];
+
+        // Test with various special characters
+        rom[0x0134] = (byte)'M';
+        rom[0x0135] = (byte)'A';
+        rom[0x0136] = (byte)'R';
+        rom[0x0137] = (byte)'I';
+        rom[0x0138] = (byte)'O';
+        rom[0x0139] = 0xFF; // Non-ASCII character (not control, so preserved)
+        rom[0x013A] = (byte)'3';
+
+        var header = CartridgeHeader.Parse(rom);
+        Assert.Equal("MARIOÿ3", header.Title); // 0xFF is preserved as ÿ
     }
 }
