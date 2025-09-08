@@ -120,7 +120,7 @@ public class CpuInstructionTests
     [InlineData(0x10, 0x20, 0x30, false, false, false, false)] // No flags
     [InlineData(0xFF, 0x01, 0x00, true, false, true, true)]   // Z, H, C flags
     [InlineData(0x0F, 0x01, 0x10, false, false, true, false)] // H flag only
-    public void ADD_A_B_AddsRegisterToA(byte aValue, byte bValue, 
+    public void ADD_A_B_AddsRegisterToA(byte aValue, byte bValue,
         byte expectedResult, bool expectedZ, bool expectedN, bool expectedH, bool expectedC)
     {
         var mmu = new Mmu();
@@ -202,10 +202,10 @@ public class CpuInstructionTests
     #region CB Prefix Instructions Tests
 
     [Theory]
-    [InlineData((byte)0x80, (byte)0x01, true, false, false, true)]   // Rotate with carry out
+    [InlineData((byte)0x80, (byte)0x01, false, false, false, true)]   // Rotate with carry out
     [InlineData((byte)0x7F, (byte)0xFE, false, false, false, false)] // Rotate without carry
     [InlineData((byte)0x00, (byte)0x00, true, false, false, false)]  // Rotate zero
-    public void CB_RLC_B_RotateLeftThroughCarry(byte initial, 
+    public void CB_RLC_B_RotateLeftCircular(byte initial,
         byte expected, bool expectedZ, bool expectedN, bool expectedH, bool expectedC)
     {
         var mmu = new Mmu();

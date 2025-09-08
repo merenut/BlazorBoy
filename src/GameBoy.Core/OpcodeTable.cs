@@ -31,7 +31,7 @@ public static class OpcodeTable
 
         // LD r,r' instructions (0x40-0x7F, excluding 0x76 which is HALT)
         // 0x40: LD B,B
-        Primary[0x40] = new Instruction("LD B,B", 1, 4, cpu => { cpu.Regs.B = cpu.Regs.B; return 4; });
+        Primary[0x40] = new Instruction("LD B,B", 1, 4, cpu => { /* No-op: B = B */ return 4; });
         // 0x41: LD B,C
         Primary[0x41] = new Instruction("LD B,C", 1, 4, cpu => { cpu.Regs.B = cpu.Regs.C; return 4; });
         // 0x42: LD B,D
@@ -50,7 +50,7 @@ public static class OpcodeTable
         // 0x48: LD C,B
         Primary[0x48] = new Instruction("LD C,B", 1, 4, cpu => { cpu.Regs.C = cpu.Regs.B; return 4; });
         // 0x49: LD C,C
-        Primary[0x49] = new Instruction("LD C,C", 1, 4, cpu => { cpu.Regs.C = cpu.Regs.C; return 4; });
+        Primary[0x49] = new Instruction("LD C,C", 1, 4, cpu => { /* No-op: C = C */ return 4; });
         // 0x4A: LD C,D
         Primary[0x4A] = new Instruction("LD C,D", 1, 4, cpu => { cpu.Regs.C = cpu.Regs.D; return 4; });
         // 0x4B: LD C,E
@@ -69,7 +69,7 @@ public static class OpcodeTable
         // 0x51: LD D,C
         Primary[0x51] = new Instruction("LD D,C", 1, 4, cpu => { cpu.Regs.D = cpu.Regs.C; return 4; });
         // 0x52: LD D,D
-        Primary[0x52] = new Instruction("LD D,D", 1, 4, cpu => { cpu.Regs.D = cpu.Regs.D; return 4; });
+        Primary[0x52] = new Instruction("LD D,D", 1, 4, cpu => { /* No-op: D = D */ return 4; });
         // 0x53: LD D,E
         Primary[0x53] = new Instruction("LD D,E", 1, 4, cpu => { cpu.Regs.D = cpu.Regs.E; return 4; });
         // 0x54: LD D,H
@@ -88,7 +88,7 @@ public static class OpcodeTable
         // 0x5A: LD E,D
         Primary[0x5A] = new Instruction("LD E,D", 1, 4, cpu => { cpu.Regs.E = cpu.Regs.D; return 4; });
         // 0x5B: LD E,E
-        Primary[0x5B] = new Instruction("LD E,E", 1, 4, cpu => { cpu.Regs.E = cpu.Regs.E; return 4; });
+        Primary[0x5B] = new Instruction("LD E,E", 1, 4, cpu => { /* No-op: E = E */ return 4; });
         // 0x5C: LD E,H
         Primary[0x5C] = new Instruction("LD E,H", 1, 4, cpu => { cpu.Regs.E = cpu.Regs.H; return 4; });
         // 0x5D: LD E,L
@@ -107,7 +107,7 @@ public static class OpcodeTable
         // 0x63: LD H,E
         Primary[0x63] = new Instruction("LD H,E", 1, 4, cpu => { cpu.Regs.H = cpu.Regs.E; return 4; });
         // 0x64: LD H,H
-        Primary[0x64] = new Instruction("LD H,H", 1, 4, cpu => { cpu.Regs.H = cpu.Regs.H; return 4; });
+        Primary[0x64] = new Instruction("LD H,H", 1, 4, cpu => { /* No-op: H = H */ return 4; });
         // 0x65: LD H,L
         Primary[0x65] = new Instruction("LD H,L", 1, 4, cpu => { cpu.Regs.H = cpu.Regs.L; return 4; });
         // 0x66: LD H,(HL)
@@ -126,7 +126,7 @@ public static class OpcodeTable
         // 0x6C: LD L,H
         Primary[0x6C] = new Instruction("LD L,H", 1, 4, cpu => { cpu.Regs.L = cpu.Regs.H; return 4; });
         // 0x6D: LD L,L
-        Primary[0x6D] = new Instruction("LD L,L", 1, 4, cpu => { cpu.Regs.L = cpu.Regs.L; return 4; });
+        Primary[0x6D] = new Instruction("LD L,L", 1, 4, cpu => { /* No-op: L = L */ return 4; });
         // 0x6E: LD L,(HL)
         Primary[0x6E] = new Instruction("LD L,(HL)", 1, 8, cpu => { cpu.Regs.L = cpu.ReadHL(); return 8; });
         // 0x6F: LD L,A
@@ -163,7 +163,7 @@ public static class OpcodeTable
         // 0x7E: LD A,(HL)
         Primary[0x7E] = new Instruction("LD A,(HL)", 1, 8, cpu => { cpu.Regs.A = cpu.ReadHL(); return 8; });
         // 0x7F: LD A,A
-        Primary[0x7F] = new Instruction("LD A,A", 1, 4, cpu => { cpu.Regs.A = cpu.Regs.A; return 4; });
+        Primary[0x7F] = new Instruction("LD A,A", 1, 4, cpu => { /* No-op: A = A */ return 4; });
 
         // LD r,d8 instructions (Load immediate byte into register)
         // 0x06: LD B,d8
@@ -815,36 +815,35 @@ public static class OpcodeTable
             return 4;
         });
 
-        // Complete ALU operations with other registers
         // 0x88-0x8F: ADC A,r (add with carry)
-        Primary[0x88] = new Instruction("ADC A,B", 1, 4, OperandType.Register, cpu => { /* ADC A,B */ return 4; });
-        Primary[0x89] = new Instruction("ADC A,C", 1, 4, OperandType.Register, cpu => { /* ADC A,C */ return 4; });
-        Primary[0x8A] = new Instruction("ADC A,D", 1, 4, OperandType.Register, cpu => { /* ADC A,D */ return 4; });
-        Primary[0x8B] = new Instruction("ADC A,E", 1, 4, OperandType.Register, cpu => { /* ADC A,E */ return 4; });
-        Primary[0x8C] = new Instruction("ADC A,H", 1, 4, OperandType.Register, cpu => { /* ADC A,H */ return 4; });
-        Primary[0x8D] = new Instruction("ADC A,L", 1, 4, OperandType.Register, cpu => { /* ADC A,L */ return 4; });
-        Primary[0x8E] = new Instruction("ADC A,(HL)", 1, 8, OperandType.Memory, cpu => { /* ADC A,(HL) */ return 8; });
-        Primary[0x8F] = new Instruction("ADC A,A", 1, 4, OperandType.Register, cpu => { /* ADC A,A */ return 4; });
+        Primary[0x88] = new Instruction("ADC A,B", 1, 4, OperandType.Register, cpu => { cpu.AdcToA(cpu.Regs.B); return 4; });
+        Primary[0x89] = new Instruction("ADC A,C", 1, 4, OperandType.Register, cpu => { cpu.AdcToA(cpu.Regs.C); return 4; });
+        Primary[0x8A] = new Instruction("ADC A,D", 1, 4, OperandType.Register, cpu => { cpu.AdcToA(cpu.Regs.D); return 4; });
+        Primary[0x8B] = new Instruction("ADC A,E", 1, 4, OperandType.Register, cpu => { cpu.AdcToA(cpu.Regs.E); return 4; });
+        Primary[0x8C] = new Instruction("ADC A,H", 1, 4, OperandType.Register, cpu => { cpu.AdcToA(cpu.Regs.H); return 4; });
+        Primary[0x8D] = new Instruction("ADC A,L", 1, 4, OperandType.Register, cpu => { cpu.AdcToA(cpu.Regs.L); return 4; });
+        Primary[0x8E] = new Instruction("ADC A,(HL)", 1, 8, OperandType.Memory, cpu => { cpu.AdcToA(cpu.ReadHL()); return 8; });
+        Primary[0x8F] = new Instruction("ADC A,A", 1, 4, OperandType.Register, cpu => { cpu.AdcToA(cpu.Regs.A); return 4; });
 
         // 0x90-0x97: SUB r
-        Primary[0x90] = new Instruction("SUB B", 1, 4, OperandType.Register, cpu => { /* SUB B */ return 4; });
-        Primary[0x91] = new Instruction("SUB C", 1, 4, OperandType.Register, cpu => { /* SUB C */ return 4; });
-        Primary[0x92] = new Instruction("SUB D", 1, 4, OperandType.Register, cpu => { /* SUB D */ return 4; });
-        Primary[0x93] = new Instruction("SUB E", 1, 4, OperandType.Register, cpu => { /* SUB E */ return 4; });
-        Primary[0x94] = new Instruction("SUB H", 1, 4, OperandType.Register, cpu => { /* SUB H */ return 4; });
-        Primary[0x95] = new Instruction("SUB L", 1, 4, OperandType.Register, cpu => { /* SUB L */ return 4; });
-        Primary[0x96] = new Instruction("SUB (HL)", 1, 8, OperandType.Memory, cpu => { /* SUB (HL) */ return 8; });
-        Primary[0x97] = new Instruction("SUB A", 1, 4, OperandType.Register, cpu => { /* SUB A */ return 4; });
+        Primary[0x90] = new Instruction("SUB B", 1, 4, OperandType.Register, cpu => { cpu.SubFromA(cpu.Regs.B); return 4; });
+        Primary[0x91] = new Instruction("SUB C", 1, 4, OperandType.Register, cpu => { cpu.SubFromA(cpu.Regs.C); return 4; });
+        Primary[0x92] = new Instruction("SUB D", 1, 4, OperandType.Register, cpu => { cpu.SubFromA(cpu.Regs.D); return 4; });
+        Primary[0x93] = new Instruction("SUB E", 1, 4, OperandType.Register, cpu => { cpu.SubFromA(cpu.Regs.E); return 4; });
+        Primary[0x94] = new Instruction("SUB H", 1, 4, OperandType.Register, cpu => { cpu.SubFromA(cpu.Regs.H); return 4; });
+        Primary[0x95] = new Instruction("SUB L", 1, 4, OperandType.Register, cpu => { cpu.SubFromA(cpu.Regs.L); return 4; });
+        Primary[0x96] = new Instruction("SUB (HL)", 1, 8, OperandType.Memory, cpu => { cpu.SubFromA(cpu.ReadHL()); return 8; });
+        Primary[0x97] = new Instruction("SUB A", 1, 4, OperandType.Register, cpu => { cpu.SubFromA(cpu.Regs.A); return 4; });
 
         // 0x98-0x9F: SBC A,r (subtract with carry)
-        Primary[0x98] = new Instruction("SBC A,B", 1, 4, OperandType.Register, cpu => { /* SBC A,B */ return 4; });
-        Primary[0x99] = new Instruction("SBC A,C", 1, 4, OperandType.Register, cpu => { /* SBC A,C */ return 4; });
-        Primary[0x9A] = new Instruction("SBC A,D", 1, 4, OperandType.Register, cpu => { /* SBC A,D */ return 4; });
-        Primary[0x9B] = new Instruction("SBC A,E", 1, 4, OperandType.Register, cpu => { /* SBC A,E */ return 4; });
-        Primary[0x9C] = new Instruction("SBC A,H", 1, 4, OperandType.Register, cpu => { /* SBC A,H */ return 4; });
-        Primary[0x9D] = new Instruction("SBC A,L", 1, 4, OperandType.Register, cpu => { /* SBC A,L */ return 4; });
-        Primary[0x9E] = new Instruction("SBC A,(HL)", 1, 8, OperandType.Memory, cpu => { /* SBC A,(HL) */ return 8; });
-        Primary[0x9F] = new Instruction("SBC A,A", 1, 4, OperandType.Register, cpu => { /* SBC A,A */ return 4; });
+        Primary[0x98] = new Instruction("SBC A,B", 1, 4, OperandType.Register, cpu => { cpu.SbcFromA(cpu.Regs.B); return 4; });
+        Primary[0x99] = new Instruction("SBC A,C", 1, 4, OperandType.Register, cpu => { cpu.SbcFromA(cpu.Regs.C); return 4; });
+        Primary[0x9A] = new Instruction("SBC A,D", 1, 4, OperandType.Register, cpu => { cpu.SbcFromA(cpu.Regs.D); return 4; });
+        Primary[0x9B] = new Instruction("SBC A,E", 1, 4, OperandType.Register, cpu => { cpu.SbcFromA(cpu.Regs.E); return 4; });
+        Primary[0x9C] = new Instruction("SBC A,H", 1, 4, OperandType.Register, cpu => { cpu.SbcFromA(cpu.Regs.H); return 4; });
+        Primary[0x9D] = new Instruction("SBC A,L", 1, 4, OperandType.Register, cpu => { cpu.SbcFromA(cpu.Regs.L); return 4; });
+        Primary[0x9E] = new Instruction("SBC A,(HL)", 1, 8, OperandType.Memory, cpu => { cpu.SbcFromA(cpu.ReadHL()); return 8; });
+        Primary[0x9F] = new Instruction("SBC A,A", 1, 4, OperandType.Register, cpu => { cpu.SbcFromA(cpu.Regs.A); return 4; });
 
         // 0xA0-0xA7: AND r
         Primary[0xA0] = new Instruction("AND B", 1, 4, OperandType.Register, cpu => { cpu.AndWithA(cpu.Regs.B); return 4; });
@@ -1007,7 +1006,20 @@ public static class OpcodeTable
         Primary[0xE5] = new Instruction("PUSH HL", 1, 16, OperandType.Register, cpu => { cpu.PushStack(cpu.Regs.HL); return 16; });
         Primary[0xE6] = new Instruction("AND d8", 2, 8, OperandType.Immediate8, cpu => { byte operand = cpu.ReadImm8(); cpu.AndWithA(operand); return 8; });
         Primary[0xE7] = new Instruction("RST 20H", 1, 16, OperandType.None, cpu => { cpu.PushStack(cpu.Regs.PC); cpu.Regs.PC = 0x20; return 16; });
-        Primary[0xE8] = new Instruction("ADD SP,r8", 2, 16, OperandType.Relative8, cpu => { cpu.ReadImm8(); return 16; });
+        Primary[0xE8] = new Instruction("ADD SP,r8", 2, 16, OperandType.Relative8, cpu =>
+        {
+            sbyte offset = (sbyte)cpu.ReadImm8();
+            int result = cpu.Regs.SP + offset;
+
+            // ADD SP,r8 sets flags based on the addition
+            bool halfCarry = (cpu.Regs.SP & 0x0F) + (offset & 0x0F) > 0x0F;
+            bool carry = (cpu.Regs.SP & 0xFF) + (offset & 0xFF) > 0xFF;
+
+            cpu.Regs.SP = (ushort)(result & 0xFFFF);
+            cpu.SetFlags(false, false, halfCarry, carry); // Z=0, N=0
+
+            return 16;
+        });
         Primary[0xEE] = new Instruction("XOR d8", 2, 8, OperandType.Immediate8, cpu => { byte operand = cpu.ReadImm8(); cpu.XorWithA(operand); return 8; });
         Primary[0xEF] = new Instruction("RST 28H", 1, 16, OperandType.None, cpu => { cpu.PushStack(cpu.Regs.PC); cpu.Regs.PC = 0x28; return 16; });
 
@@ -1027,7 +1039,20 @@ public static class OpcodeTable
         });
         Primary[0xF6] = new Instruction("OR d8", 2, 8, OperandType.Immediate8, cpu => { byte operand = cpu.ReadImm8(); cpu.OrWithA(operand); return 8; });
         Primary[0xF7] = new Instruction("RST 30H", 1, 16, OperandType.None, cpu => { cpu.PushStack(cpu.Regs.PC); cpu.Regs.PC = 0x30; return 16; });
-        Primary[0xF8] = new Instruction("LD HL,SP+r8", 2, 12, OperandType.Relative8, cpu => { cpu.ReadImm8(); return 12; });
+        Primary[0xF8] = new Instruction("LD HL,SP+r8", 2, 12, OperandType.Relative8, cpu =>
+        {
+            sbyte offset = (sbyte)cpu.ReadImm8();
+            int result = cpu.Regs.SP + offset;
+
+            // LD HL,SP+r8 sets flags based on the addition
+            bool halfCarry = (cpu.Regs.SP & 0x0F) + (offset & 0x0F) > 0x0F;
+            bool carry = (cpu.Regs.SP & 0xFF) + (offset & 0xFF) > 0xFF;
+
+            cpu.Regs.HL = (ushort)(result & 0xFFFF);
+            cpu.SetFlags(false, false, halfCarry, carry); // Z=0, N=0
+
+            return 12;
+        });
         Primary[0xF9] = new Instruction("LD SP,HL", 1, 8, OperandType.Register, cpu => { cpu.Regs.SP = cpu.Regs.HL; return 8; });
         Primary[0xFE] = new Instruction("CP d8", 2, 8, OperandType.Immediate8, cpu => { byte operand = cpu.ReadImm8(); cpu.CompareA(operand); return 8; });
         Primary[0xFF] = new Instruction("RST 38H", 1, 16, OperandType.None, cpu => { cpu.PushStack(cpu.Regs.PC); cpu.Regs.PC = 0x38; return 16; });
