@@ -98,6 +98,7 @@ public sealed class Emulator
         _timer.Step(cycles);
         _ppu.Step(cycles);
         _serial.Step(cycles);
+        _mmu.StepDma(cycles);
         _cycleAccumulator += cycles;
 
         if (_cycleAccumulator >= CyclesPerFrame)
