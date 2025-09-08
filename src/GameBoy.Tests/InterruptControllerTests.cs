@@ -246,4 +246,36 @@ public class InterruptControllerTests
 
         Assert.Throws<ArgumentException>(() => controller.Service((InterruptType)255));
     }
+
+    [Fact]
+    public void DocumentedApiExamples_WorkCorrectly()
+    {
+        var interruptController = new InterruptController();
+        interruptController.SetIF(0x00); // Clear all bits
+
+        // Test all documented API usage examples work correctly:
+
+        // PPU: Request VBlank interrupt at end of frame
+        interruptController.Request(InterruptType.VBlank);
+        Assert.Equal(0xE1, interruptController.IF); // 0x01 | 0xE0
+
+        // PPU: Request LCD STAT interrupt on mode changes  
+        interruptController.Request(InterruptType.LCDStat);
+        Assert.Equal(0xE3, interruptController.IF); // 0x03 | 0xE0
+
+        // Timer: Request Timer interrupt on TIMA overflow
+        interruptController.Request(InterruptType.Timer);
+        Assert.Equal(0xE7, interruptController.IF); // 0x07 | 0xE0
+
+        // Serial: Request Serial interrupt on transfer complete
+        interruptController.Request(InterruptType.Serial);
+        Assert.Equal(0xEF, interruptController.IF); // 0x0F | 0xE0
+
+        // Joypad: Request Joypad interrupt on button press
+        interruptController.Request(InterruptType.Joypad);
+        Assert.Equal(0xFF, interruptController.IF); // 0x1F | 0xE0
+
+        // Verify all 5 interrupt sources are properly set
+        Assert.True((interruptController.IF & 0x1F) == 0x1F, "All 5 interrupt bits should be set");
+    }
 }
