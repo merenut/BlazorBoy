@@ -228,4 +228,218 @@ public sealed class Cpu
             (carry ? 0x10 : 0)
         );
     }
+
+    #region Register Addressing Helpers
+
+    /// <summary>
+    /// Gets an 8-bit register value by index (0=B, 1=C, 2=D, 3=E, 4=H, 5=L, 6=reserved, 7=A).
+    /// </summary>
+    public byte GetR8(int regIndex)
+    {
+        return regIndex switch
+        {
+            0 => Regs.B,
+            1 => Regs.C,
+            2 => Regs.D,
+            3 => Regs.E,
+            4 => Regs.H,
+            5 => Regs.L,
+            6 => throw new InvalidOperationException("Register index 6 is reserved for (HL) addressing"),
+            7 => Regs.A,
+            _ => throw new ArgumentOutOfRangeException(nameof(regIndex), "Register index must be 0-7")
+        };
+    }
+
+    /// <summary>
+    /// Sets an 8-bit register value by index (0=B, 1=C, 2=D, 3=E, 4=H, 5=L, 6=reserved, 7=A).
+    /// </summary>
+    public void SetR8(int regIndex, byte value)
+    {
+        switch (regIndex)
+        {
+            case 0: Regs.B = value; break;
+            case 1: Regs.C = value; break;
+            case 2: Regs.D = value; break;
+            case 3: Regs.E = value; break;
+            case 4: Regs.H = value; break;
+            case 5: Regs.L = value; break;
+            case 6: throw new InvalidOperationException("Register index 6 is reserved for (HL) addressing");
+            case 7: Regs.A = value; break;
+            default: throw new ArgumentOutOfRangeException(nameof(regIndex), "Register index must be 0-7");
+        }
+    }
+
+    /// <summary>
+    /// Gets a 16-bit register pair value by index (0=BC, 1=DE, 2=HL, 3=SP).
+    /// </summary>
+    public ushort GetR16(int regIndex)
+    {
+        return regIndex switch
+        {
+            0 => Regs.BC,
+            1 => Regs.DE,
+            2 => Regs.HL,
+            3 => Regs.SP,
+            _ => throw new ArgumentOutOfRangeException(nameof(regIndex), "Register pair index must be 0-3")
+        };
+    }
+
+    /// <summary>
+    /// Sets a 16-bit register pair value by index (0=BC, 1=DE, 2=HL, 3=SP).
+    /// </summary>
+    public void SetR16(int regIndex, ushort value)
+    {
+        switch (regIndex)
+        {
+            case 0: Regs.BC = value; break;
+            case 1: Regs.DE = value; break;
+            case 2: Regs.HL = value; break;
+            case 3: Regs.SP = value; break;
+            default: throw new ArgumentOutOfRangeException(nameof(regIndex), "Register pair index must be 0-3");
+        }
+    }
+
+    #endregion
+
+    #region Memory Addressing Helpers
+
+    /// <summary>
+    /// Reads a byte from memory at address in HL register.
+    /// </summary>
+    public byte ReadHL()
+    {
+        return _mmu.ReadByte(Regs.HL);
+    }
+
+    /// <summary>
+    /// Writes a byte to memory at address in HL register.
+    /// </summary>
+    public void WriteHL(byte value)
+    {
+        _mmu.WriteByte(Regs.HL, value);
+    }
+
+    /// <summary>
+    /// Reads a byte from memory at address in HL register, then increments HL.
+    /// </summary>
+    public byte ReadHLI()
+    {
+        byte value = _mmu.ReadByte(Regs.HL);
+        Regs.HL++;
+        return value;
+    }
+
+    /// <summary>
+    /// Writes a byte to memory at address in HL register, then increments HL.
+    /// </summary>
+    public void WriteHLI(byte value)
+    {
+        _mmu.WriteByte(Regs.HL, value);
+        Regs.HL++;
+    }
+
+    /// <summary>
+    /// Reads a byte from memory at address in HL register, then decrements HL.
+    /// </summary>
+    public byte ReadHLD()
+    {
+        byte value = _mmu.ReadByte(Regs.HL);
+        Regs.HL--;
+        return value;
+    }
+
+    /// <summary>
+    /// Writes a byte to memory at address in HL register, then decrements HL.
+    /// </summary>
+    public void WriteHLD(byte value)
+    {
+        _mmu.WriteByte(Regs.HL, value);
+        Regs.HL--;
+    }
+
+    /// <summary>
+    /// Reads a byte from memory at address in BC register.
+    /// </summary>
+    public byte ReadBC()
+    {
+        return _mmu.ReadByte(Regs.BC);
+    }
+
+    /// <summary>
+    /// Writes a byte to memory at address in BC register.
+    /// </summary>
+    public void WriteBC(byte value)
+    {
+        _mmu.WriteByte(Regs.BC, value);
+    }
+
+    /// <summary>
+    /// Reads a byte from memory at address in DE register.
+    /// </summary>
+    public byte ReadDE()
+    {
+        return _mmu.ReadByte(Regs.DE);
+    }
+
+    /// <summary>
+    /// Writes a byte to memory at address in DE register.
+    /// </summary>
+    public void WriteDE(byte value)
+    {
+        _mmu.WriteByte(Regs.DE, value);
+    }
+
+    /// <summary>
+    /// Reads a byte from high RAM at address 0xFF00 + C register.
+    /// </summary>
+    public byte ReadHighC()
+    {
+        return _mmu.ReadByte((ushort)(0xFF00 + Regs.C));
+    }
+
+    /// <summary>
+    /// Writes a byte to high RAM at address 0xFF00 + C register.
+    /// </summary>
+    public void WriteHighC(byte value)
+    {
+        _mmu.WriteByte((ushort)(0xFF00 + Regs.C), value);
+    }
+
+    /// <summary>
+    /// Reads a byte from high RAM at address 0xFF00 + immediate 8-bit value.
+    /// </summary>
+    public byte ReadHighImm8()
+    {
+        byte offset = ReadImm8();
+        return _mmu.ReadByte((ushort)(0xFF00 + offset));
+    }
+
+    /// <summary>
+    /// Writes a byte to high RAM at address 0xFF00 + immediate 8-bit value.
+    /// </summary>
+    public void WriteHighImm8(byte value)
+    {
+        byte offset = ReadImm8();
+        _mmu.WriteByte((ushort)(0xFF00 + offset), value);
+    }
+
+    /// <summary>
+    /// Reads a byte from memory at immediate 16-bit address.
+    /// </summary>
+    public byte ReadImm16Addr()
+    {
+        ushort addr = ReadImm16();
+        return _mmu.ReadByte(addr);
+    }
+
+    /// <summary>
+    /// Writes a byte to memory at immediate 16-bit address.
+    /// </summary>
+    public void WriteImm16Addr(byte value)
+    {
+        ushort addr = ReadImm16();
+        _mmu.WriteByte(addr, value);
+    }
+
+    #endregion
 }
