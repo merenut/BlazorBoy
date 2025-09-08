@@ -13,7 +13,6 @@ public sealed class Emulator
     private readonly Cpu _cpu;
     private readonly Ppu _ppu;
     private readonly Timer _timer;
-    private readonly InterruptController _intc;
 
     private int _cycleAccumulator = 0;
 
@@ -22,6 +21,7 @@ public sealed class Emulator
     public Ppu Ppu => _ppu;
     public Cpu Cpu => _cpu;
     public Mmu Mmu => _mmu;
+    public InterruptController InterruptController => _mmu.InterruptController;
 
     public Emulator()
     {
@@ -29,7 +29,6 @@ public sealed class Emulator
         _cpu = new Cpu(_mmu);
         _ppu = new Ppu();
         _timer = new Timer();
-        _intc = new InterruptController();
     }
 
     /// <summary>
