@@ -505,7 +505,7 @@ public sealed class Cpu
     /// <summary>
     /// Gets the value of the Zero flag.
     /// </summary>
-    internal bool GetZeroFlag()
+    public bool GetZeroFlag()
     {
         return (Regs.F & 0x80) != 0;
     }
@@ -513,7 +513,7 @@ public sealed class Cpu
     /// <summary>
     /// Gets the value of the Carry flag.
     /// </summary>
-    internal bool GetCarryFlag()
+    public bool GetCarryFlag()
     {
         return (Regs.F & 0x10) != 0;
     }
@@ -561,6 +561,276 @@ public sealed class Cpu
         var result = Alu.ShiftRightLogical(value);
         SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
         return result.Result;
+    }
+
+    /// <summary>
+    /// Gets an 8-bit register by index (0=B, 1=C, 2=D, 3=E, 4=H, 5=L, 6=(HL), 7=A).
+    /// </summary>
+    internal byte GetReg8(int index)
+    {
+        return index switch
+        {
+            0 => Regs.B,
+            1 => Regs.C,
+            2 => Regs.D,
+            3 => Regs.E,
+            4 => Regs.H,
+            5 => Regs.L,
+            6 => ReadHL(),
+            7 => Regs.A,
+            _ => throw new ArgumentOutOfRangeException(nameof(index), "Register index must be 0-7")
+        };
+    }
+
+    /// <summary>
+    /// Sets an 8-bit register by index (0=B, 1=C, 2=D, 3=E, 4=H, 5=L, 6=(HL), 7=A).
+    /// </summary>
+    internal void SetReg8(int index, byte value)
+    {
+        switch (index)
+        {
+            case 0: Regs.B = value; break;
+            case 1: Regs.C = value; break;
+            case 2: Regs.D = value; break;
+            case 3: Regs.E = value; break;
+            case 4: Regs.H = value; break;
+            case 5: Regs.L = value; break;
+            case 6: WriteHL(value); break;
+            case 7: Regs.A = value; break;
+            default: throw new ArgumentOutOfRangeException(nameof(index), "Register index must be 0-7");
+        }
+    }
+
+    /// <summary>
+    /// Gets a reference to an 8-bit register by index for direct manipulation (not valid for (HL)).
+    /// </summary>
+    internal ref byte GetReg8Ref(int index)
+    {
+        switch (index)
+        {
+            case 0: return ref Regs.B;
+            case 1: return ref Regs.C;
+            case 2: return ref Regs.D;
+            case 3: return ref Regs.E;
+            case 4: return ref Regs.H;
+            case 5: return ref Regs.L;
+            case 7: return ref Regs.A;
+            default: throw new ArgumentOutOfRangeException(nameof(index), "Register index must be 0-5 or 7 for direct references");
+        }
+    }
+
+    /// <summary>
+    /// Performs DAA operation on A register.
+    /// </summary>
+    internal void DecimalAdjustA()
+    {
+        bool negative = (Regs.F & 0x40) != 0;
+        bool halfCarry = (Regs.F & 0x20) != 0;
+        bool carry = GetCarryFlag();
+
+        var result = Alu.DecimalAdjust(Regs.A, negative, halfCarry, carry);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Complements A register (bitwise NOT).
+    /// </summary>
+    internal void ComplementA()
+    {
+        Regs.A = (byte)~Regs.A;
+        // CPL sets N and H flags, leaves Z and C unchanged
+        SetFlags(GetZeroFlag(), true, true, GetCarryFlag());
+    }
+
+    /// <summary>
+    /// Sets the carry flag.
+    /// </summary>
+    internal void SetCarryFlag()
+    {
+        // SCF sets C, resets N and H, leaves Z unchanged
+        SetFlags(GetZeroFlag(), false, false, true);
+    }
+
+    /// <summary>
+    /// Complements the carry flag.
+    /// </summary>
+    internal void ComplementCarryFlag()
+    {
+        // CCF complements C, resets N and H, leaves Z unchanged
+        SetFlags(GetZeroFlag(), false, false, !GetCarryFlag());
+    }
+
+    /// <summary>
+    /// Performs rotate/shift operations on a register or memory location.
+    /// </summary>
+    internal byte PerformRotateShift(int operation, int regIndex)
+    {
+        byte value = GetReg8(regIndex);
+        byte result = operation switch
+        {
+            0 => RotateLeftCircular(value),     // RLC
+            1 => RotateRightCircular(value),    // RRC
+            2 => RotateLeft(value),             // RL
+            3 => RotateRight(value),            // RR
+            4 => ShiftLeftArithmetic(value),    // SLA
+            5 => ShiftRightArithmetic(value),   // SRA
+            6 => SwapNibbles(value),            // SWAP
+            7 => ShiftRightLogical(value),      // SRL
+            _ => throw new ArgumentOutOfRangeException(nameof(operation), "Invalid rotate/shift operation")
+        };
+        SetReg8(regIndex, result);
+        return result;
+    }
+
+    /// <summary>
+    /// Rotates a byte right circularly and sets flags.
+    /// </summary>
+    internal byte RotateRightCircular(byte value)
+    {
+        var result = Alu.RotateRightCircular(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Rotates a byte left through carry and sets flags.
+    /// </summary>
+    internal byte RotateLeft(byte value)
+    {
+        var result = Alu.RotateLeft(value, GetCarryFlag());
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Rotates a byte right through carry and sets flags.
+    /// </summary>
+    internal byte RotateRight(byte value)
+    {
+        var result = Alu.RotateRight(value, GetCarryFlag());
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Shifts a byte left arithmetically and sets flags.
+    /// </summary>
+    internal byte ShiftLeftArithmetic(byte value)
+    {
+        var result = Alu.ShiftLeftArithmetic(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Shifts a byte right arithmetically and sets flags.
+    /// </summary>
+    internal byte ShiftRightArithmetic(byte value)
+    {
+        var result = Alu.ShiftRightArithmetic(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Swaps the nibbles of a byte and sets flags.
+    /// </summary>
+    internal byte SwapNibbles(byte value)
+    {
+        var result = Alu.Swap(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, result.Carry);
+        return result.Result;
+    }
+
+    /// <summary>
+    /// Rotates A left circular (RLCA instruction).
+    /// </summary>
+    internal void RotateALeftCircular()
+    {
+        var result = Alu.RotateLeftCircular(Regs.A);
+        // RLCA always resets Zero flag
+        SetFlags(false, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Rotates A right circular (RRCA instruction).
+    /// </summary>
+    internal void RotateARightCircular()
+    {
+        var result = Alu.RotateRightCircular(Regs.A);
+        // RRCA always resets Zero flag
+        SetFlags(false, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Rotates A left through carry (RLA instruction).
+    /// </summary>
+    internal void RotateALeftThroughCarry()
+    {
+        var result = Alu.RotateLeft(Regs.A, GetCarryFlag());
+        // RLA always resets Zero flag
+        SetFlags(false, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Rotates A right through carry (RRA instruction).
+    /// </summary>
+    internal void RotateARightThroughCarry()
+    {
+        var result = Alu.RotateRight(Regs.A, GetCarryFlag());
+        // RRA always resets Zero flag
+        SetFlags(false, result.Negative, result.HalfCarry, result.Carry);
+        Regs.A = result.Result;
+    }
+
+    /// <summary>
+    /// Adds a 16-bit value to HL and sets flags.
+    /// </summary>
+    internal void AddToHL(ushort value)
+    {
+        int result = Regs.HL + value;
+        bool carry = result > 0xFFFF;
+        bool halfCarry = (Regs.HL & 0x0FFF) + (value & 0x0FFF) > 0x0FFF;
+
+        Regs.HL = (ushort)(result & 0xFFFF);
+
+        // ADD HL,rr: N=0, H=half carry from bit 11, C=carry from bit 15, Z=unchanged
+        SetFlags(GetZeroFlag(), false, halfCarry, carry);
+    }
+
+    /// <summary>
+    /// Stores SP at immediate 16-bit address.
+    /// </summary>
+    internal void StoreSPAtImm16()
+    {
+        ushort addr = ReadImm16();
+        _mmu.WriteWord(addr, Regs.SP);
+    }
+
+    /// <summary>
+    /// Increments value at (HL).
+    /// </summary>
+    internal void IncMemoryHL()
+    {
+        byte value = ReadHL();
+        var result = Alu.Inc8(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, GetCarryFlag());
+        WriteHL(result.Result);
+    }
+
+    /// <summary>
+    /// Decrements value at (HL).
+    /// </summary>
+    internal void DecMemoryHL()
+    {
+        byte value = ReadHL();
+        var result = Alu.Dec8(value);
+        SetFlags(result.Zero, result.Negative, result.HalfCarry, GetCarryFlag());
+        WriteHL(result.Result);
     }
 
     #endregion
