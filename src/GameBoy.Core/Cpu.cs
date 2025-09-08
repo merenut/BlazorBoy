@@ -534,7 +534,7 @@ public sealed class Cpu
     internal void TestBit(byte value, int bitIndex)
     {
         bool bitSet = (value & (1 << bitIndex)) != 0;
-        SetFlags(!bitSet, true, true, GetCarryFlag()); // Z=!bit, N=1, H=1, C=unchanged
+        SetFlags(!bitSet, false, true, GetCarryFlag()); // Z=!bit, N=0, H=1, C=unchanged
     }
 
     /// <summary>
