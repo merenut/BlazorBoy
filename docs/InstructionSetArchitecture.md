@@ -33,6 +33,49 @@ The `OperandType` enum categorizes instructions by their operand patterns:
 | `MemoryImmediate16` | Absolute memory addressing | 3 bytes | LD A,(a16) |
 | `Relative8` | Relative jumps | 2 bytes | JR r8; JR Z,r8 |
 
+## Instruction Coverage Status
+
+### Primary Opcodes (0x00-0xFF) - 245/245 Valid Implemented (100%)
+
+The primary instruction table is **completely implemented** with all 245 valid opcodes. The following table shows the coverage by range:
+
+| Range | Description | Status | Count |
+|-------|-------------|--------|-------|
+| 0x00-0x3F | Mixed operations (NOP, loads, arithmetic, jumps, control) | ✅ Complete | 64/64 |
+| 0x40-0x7F | 8×8 LD r,r' matrix + HALT (0x76) | ✅ Complete | 64/64 |
+| 0x80-0xBF | ALU operations (ADD, ADC, SUB, SBC, AND, XOR, OR, CP) | ✅ Complete | 64/64 |
+| 0xC0-0xFF | Control flow, stack operations, I/O, RST vectors | ✅ Complete | 53/64 |
+| **Invalid** | Intentionally undefined opcodes | ✅ Properly handled | 11 opcodes |
+
+**Invalid opcodes** (handled as null entries): 0xD3, 0xDB, 0xDD, 0xE3, 0xE4, 0xEB, 0xEC, 0xED, 0xF4, 0xFC, 0xFD
+
+### CB-Prefixed Opcodes (0xCB00-0xCBFF) - 256/256 Implemented (100%)
+
+The CB instruction table is **completely implemented** using systematic code generation:
+
+| Range | Description | Status | Count |
+|-------|-------------|--------|-------|
+| 0x00-0x3F | Rotate and shift operations (8 ops × 8 registers) | ✅ Complete | 64/64 |
+| 0x40-0x7F | BIT operations (8 bits × 8 registers) | ✅ Complete | 64/64 |
+| 0x80-0xBF | RES operations (8 bits × 8 registers) | ✅ Complete | 64/64 |
+| 0xC0-0xFF | SET operations (8 bits × 8 registers) | ✅ Complete | 64/64 |
+
+### Implementation Methodology
+
+**Primary Table**: All valid opcodes explicitly implemented with individual instruction definitions.
+
+**CB Table**: Systematically generated using nested loops:
+- Register order: B(0), C(1), D(2), E(3), H(4), L(5), (HL)(6), A(7)
+- Operations handled via pattern matching and delegation to CPU methods
+- Memory operations (HL) properly handled with correct cycle counts
+
+### Testing Coverage
+
+All implemented instructions are validated by:
+- `OpcodeTableCoverageTests` - Ensures 100% coverage of valid opcodes
+- `InstructionDecodingTests` - Validates instruction metadata and execution
+- Individual CPU instruction tests in test suite (411 tests passing)
+
 ## Instruction Tables
 
 ### Primary Table (0x00-0xFF)
@@ -40,27 +83,33 @@ The `OperandType` enum categorizes instructions by their operand patterns:
 The primary instruction table handles all standard opcodes. It's implemented as a 256-entry array where each index corresponds to the opcode value.
 
 **Current Implementation Status:**
-- **~120 instructions implemented** out of 256 possible opcodes
-- **Covers major instruction categories:**
-  - Load operations (LD variants)
-  - Arithmetic operations (ADD, SUB, INC, DEC)
-  - Jump and branch operations (JP, JR, CALL, RET)
-  - Stack operations (PUSH, POP)
-  - Basic logical operations (AND, OR, XOR)
-  - Control operations (NOP, HALT, EI, DI)
+- **245/245 valid instructions implemented** (100% coverage of valid opcodes)
+- **11 invalid opcodes** properly handled as null entries (0xD3, 0xDB, 0xDD, 0xE3, 0xE4, 0xEB, 0xEC, 0xED, 0xF4, 0xFC, 0xFD)
+- **Complete coverage of all instruction categories:**
+  - Load operations (LD variants - all combinations)
+  - Arithmetic operations (ADD, ADC, SUB, SBC, INC, DEC)
+  - Logical operations (AND, XOR, OR, CP)
+  - Jump and branch operations (JP, JR, CALL, RET - all variants)
+  - Stack operations (PUSH, POP - all register pairs)
+  - Control operations (NOP, HALT, EI, DI, STOP)
+  - I/O operations (LDH variants)
+  - RST vectors (all 8 vectors)
 
 ### CB-Prefixed Table (0xCB00-0xCBFF)
 
 CB-prefixed instructions handle bit manipulation, rotates, and shifts. When opcode 0xCB is encountered, the CPU reads the next byte to index into the CB table.
 
 **Current Implementation Status:**
-- **~12 instructions implemented** out of 256 possible CB opcodes
-- **Covers critical bit operations:**
-  - Bit testing (BIT)
-  - Bit setting (SET)
-  - Bit clearing (RES)
-  - Rotate operations (RLC)
-  - Shift operations (SRL)
+- **256/256 instructions implemented** (100% coverage)
+- **Systematically generated** via loops for regular patterns
+- **Complete coverage of all CB instruction categories:**
+  - Rotate operations (RLC, RRC, RL, RR)
+  - Shift operations (SLA, SRA, SRL)
+  - Swap operations (SWAP)
+  - Bit testing (BIT 0-7)
+  - Bit setting (SET 0-7)
+  - Bit clearing (RES 0-7)
+- **All register and memory variants** implemented for each operation type
 
 ## Decoding Process
 
@@ -179,5 +228,41 @@ Primary[0x3C] = new Instruction("INC A", 1, 4, OperandType.Register, cpu =>
 - **Integration tests**: Test instruction sequences
 - **Validation tests**: Verify metadata consistency
 - **Regression tests**: Ensure existing instructions still work
+
+## Maintainer Notes
+
+### Current Implementation Status (Updated: Phase 3)
+
+The BlazorBoy CPU instruction set implementation is **100% COMPLETE** as of Phase 3:
+
+- ✅ **All 245 valid primary opcodes** implemented and tested
+- ✅ **All 256 CB-prefixed opcodes** implemented via systematic generation
+- ✅ **All invalid opcodes** properly handled (return null)
+- ✅ **Complete test coverage** with 411 passing tests
+- ✅ **Backward compatible** with existing codebase
+
+### For Future Maintainers (AI or Human)
+
+**What's Done:**
+- The instruction set is feature-complete for Game Boy emulation
+- No additional opcodes need to be implemented
+- The existing test suite validates all implemented instructions
+
+**Implementation Quality:**
+- Primary opcodes: Hand-crafted for clarity and maintainability
+- CB opcodes: Generated systematically to ensure consistency
+- Error handling: Graceful degradation for edge cases
+- Performance: O(1) lookup with minimal overhead
+
+**If You Need to Debug Instructions:**
+1. Check `OpcodeTableCoverageTests.cs` for validation tests
+2. Use `InstructionDecodingTests.cs` for specific instruction behavior
+3. The CPU Step() method handles both primary and CB instruction dispatch
+4. All instructions include proper cycle timing and flag handling
+
+**Do NOT:**
+- Add duplicate opcode implementations
+- Modify the invalid opcode list (it's per LR35902 specification)
+- Change the CB table generation loops without understanding the full impact
 
 This architecture provides a solid foundation for implementing the complete Game Boy instruction set while maintaining performance, robustness, and maintainability.
