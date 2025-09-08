@@ -303,11 +303,11 @@ public class CpuInstructionTests
 
         // Execute EI instruction
         var cycles = cpu.Step();
-        
+
         // Interrupts should not be enabled immediately after EI
         Assert.False(cpu.InterruptsEnabled);
         Assert.Equal(4, cycles);
-        
+
         // Execute next instruction (NOP) - this should enable interrupts
         cycles = cpu.Step();
         Assert.True(cpu.InterruptsEnabled);

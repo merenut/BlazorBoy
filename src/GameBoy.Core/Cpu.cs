@@ -127,6 +127,9 @@ public sealed class Cpu
         byte opcode = _mmu.ReadByte(Regs.PC++);
         int cycles;
 
+        // TODO: HALT bug implementation would go here
+        // Currently commented out due to complexity
+
         // Handle CB-prefixed instructions
         if (opcode == 0xCB)
         {
@@ -553,6 +556,9 @@ public sealed class Cpu
     internal void SetHalted(bool halted)
     {
         IsHalted = halted;
+
+        // TODO: Implement HALT bug when IME=0 and IE&IF≠0
+        // This is a complex hardware quirk that requires more detailed research
     }
 
     /// <summary>
