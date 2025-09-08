@@ -9,6 +9,7 @@ namespace GameBoy.Core;
 public sealed class CartridgeHeader
 {
     // Header field offsets
+    private const int TitleOffset = 0x0134;           // 16 bytes (0x0134-0x0143)
     private const int CartridgeTypeOffset = 0x0147;
     private const int RomSizeOffset = 0x0148;
     private const int RamSizeOffset = 0x0149;
@@ -22,6 +23,11 @@ public sealed class CartridgeHeader
     /// Cartridge type byte that determines the MBC controller.
     /// </summary>
     public byte CartridgeType { get; }
+
+    /// <summary>
+    /// Game title extracted from the header (null-terminated, up to 16 characters).
+    /// </summary>
+    public string Title { get; }
 
     /// <summary>
     /// ROM size code (0x00 = 32KB, 0x01 = 64KB, etc.).
@@ -83,6 +89,7 @@ public sealed class CartridgeHeader
         if (rom == null || rom.Length < 0x0150)
             throw new ArgumentException("ROM too small to contain valid header");
 
+        Title = ExtractTitle(rom);
         CartridgeType = rom[CartridgeTypeOffset];
         RomSizeCode = rom[RomSizeOffset];
         RamSizeCode = rom[RamSizeOffset];
@@ -213,6 +220,56 @@ public sealed class CartridgeHeader
             0x05 => 64 * 1024,    // 64KB (8 banks)
             _ => 0                // Default to no RAM for unknown codes
         };
+    }
+
+    /// <summary>
+    /// Extracts the title from the ROM header.
+    /// </summary>
+    private static string ExtractTitle(byte[] rom)
+    {
+        // Extract title bytes (0x0134-0x0143, 16 bytes max)
+        var titleBytes = new byte[16];
+        Array.Copy(rom, TitleOffset, titleBytes, 0, 16);
+
+        // Find null terminator or use full length
+        int length = 0;
+        for (int i = 0; i < titleBytes.Length; i++)
+        {
+            if (titleBytes[i] == 0)
+                break;
+            length++;
+        }
+
+        // Convert to ASCII string, handling non-printable characters
+        var titleChars = new char[length];
+        for (int i = 0; i < length; i++)
+        {
+            char c = (char)titleBytes[i];
+            // Replace non-printable characters with space
+            titleChars[i] = char.IsControl(c) ? ' ' : c;
+        }
+
+        return new string(titleChars).TrimEnd();
+    }
+
+    /// <summary>
+    /// Validates that the ROM header contains reasonable values.
+    /// </summary>
+    public bool IsValidHeader()
+    {
+        // Check if ROM size code is valid
+        if (RomSizeCode > 0x08 && RomSizeCode != 0x52 && RomSizeCode != 0x53 && RomSizeCode != 0x54)
+            return false;
+
+        // Check if RAM size code is valid
+        if (RamSizeCode > 0x05)
+            return false;
+
+        // Check if destination code is valid
+        if (DestinationCode > 0x01)
+            return false;
+
+        return true;
     }
 }
 
