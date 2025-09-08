@@ -43,7 +43,7 @@ public static class OpcodeTable
         // 0x45: LD B,L
         Primary[0x45] = new Instruction("LD B,L", 1, 4, cpu => { cpu.Regs.B = cpu.Regs.L; return 4; });
         // 0x46: LD B,(HL)
-        Primary[0x46] = new Instruction("LD B,(HL)", 1, 8, cpu => { cpu.Regs.B = cpu._mmu.ReadByte(cpu.Regs.HL); return 8; });
+        Primary[0x46] = new Instruction("LD B,(HL)", 1, 8, cpu => { cpu.Regs.B = cpu.ReadHL(); return 8; });
         // 0x47: LD B,A
         Primary[0x47] = new Instruction("LD B,A", 1, 4, cpu => { cpu.Regs.B = cpu.Regs.A; return 4; });
 
@@ -60,7 +60,7 @@ public static class OpcodeTable
         // 0x4D: LD C,L
         Primary[0x4D] = new Instruction("LD C,L", 1, 4, cpu => { cpu.Regs.C = cpu.Regs.L; return 4; });
         // 0x4E: LD C,(HL)
-        Primary[0x4E] = new Instruction("LD C,(HL)", 1, 8, cpu => { cpu.Regs.C = cpu._mmu.ReadByte(cpu.Regs.HL); return 8; });
+        Primary[0x4E] = new Instruction("LD C,(HL)", 1, 8, cpu => { cpu.Regs.C = cpu.ReadHL(); return 8; });
         // 0x4F: LD C,A
         Primary[0x4F] = new Instruction("LD C,A", 1, 4, cpu => { cpu.Regs.C = cpu.Regs.A; return 4; });
 
@@ -111,7 +111,7 @@ public static class OpcodeTable
         // 0x65: LD H,L
         Primary[0x65] = new Instruction("LD H,L", 1, 4, cpu => { cpu.Regs.H = cpu.Regs.L; return 4; });
         // 0x66: LD H,(HL)
-        Primary[0x66] = new Instruction("LD H,(HL)", 1, 8, cpu => { cpu.Regs.H = cpu._mmu.ReadByte(cpu.Regs.HL); return 8; });
+        Primary[0x66] = new Instruction("LD H,(HL)", 1, 8, cpu => { cpu.Regs.H = cpu.ReadHL(); return 8; });
         // 0x67: LD H,A
         Primary[0x67] = new Instruction("LD H,A", 1, 4, cpu => { cpu.Regs.H = cpu.Regs.A; return 4; });
 
@@ -128,25 +128,25 @@ public static class OpcodeTable
         // 0x6D: LD L,L
         Primary[0x6D] = new Instruction("LD L,L", 1, 4, cpu => { cpu.Regs.L = cpu.Regs.L; return 4; });
         // 0x6E: LD L,(HL)
-        Primary[0x6E] = new Instruction("LD L,(HL)", 1, 8, cpu => { cpu.Regs.L = cpu._mmu.ReadByte(cpu.Regs.HL); return 8; });
+        Primary[0x6E] = new Instruction("LD L,(HL)", 1, 8, cpu => { cpu.Regs.L = cpu.ReadHL(); return 8; });
         // 0x6F: LD L,A
         Primary[0x6F] = new Instruction("LD L,A", 1, 4, cpu => { cpu.Regs.L = cpu.Regs.A; return 4; });
 
         // 0x70: LD (HL),B
-        Primary[0x70] = new Instruction("LD (HL),B", 1, 8, cpu => { cpu._mmu.WriteByte(cpu.Regs.HL, cpu.Regs.B); return 8; });
+        Primary[0x70] = new Instruction("LD (HL),B", 1, 8, cpu => { cpu.WriteHL(cpu.Regs.B); return 8; });
         // 0x71: LD (HL),C
-        Primary[0x71] = new Instruction("LD (HL),C", 1, 8, cpu => { cpu._mmu.WriteByte(cpu.Regs.HL, cpu.Regs.C); return 8; });
+        Primary[0x71] = new Instruction("LD (HL),C", 1, 8, cpu => { cpu.WriteHL(cpu.Regs.C); return 8; });
         // 0x72: LD (HL),D
-        Primary[0x72] = new Instruction("LD (HL),D", 1, 8, cpu => { cpu._mmu.WriteByte(cpu.Regs.HL, cpu.Regs.D); return 8; });
+        Primary[0x72] = new Instruction("LD (HL),D", 1, 8, cpu => { cpu.WriteHL(cpu.Regs.D); return 8; });
         // 0x73: LD (HL),E
-        Primary[0x73] = new Instruction("LD (HL),E", 1, 8, cpu => { cpu._mmu.WriteByte(cpu.Regs.HL, cpu.Regs.E); return 8; });
+        Primary[0x73] = new Instruction("LD (HL),E", 1, 8, cpu => { cpu.WriteHL(cpu.Regs.E); return 8; });
         // 0x74: LD (HL),H
-        Primary[0x74] = new Instruction("LD (HL),H", 1, 8, cpu => { cpu._mmu.WriteByte(cpu.Regs.HL, cpu.Regs.H); return 8; });
+        Primary[0x74] = new Instruction("LD (HL),H", 1, 8, cpu => { cpu.WriteHL(cpu.Regs.H); return 8; });
         // 0x75: LD (HL),L
-        Primary[0x75] = new Instruction("LD (HL),L", 1, 8, cpu => { cpu._mmu.WriteByte(cpu.Regs.HL, cpu.Regs.L); return 8; });
+        Primary[0x75] = new Instruction("LD (HL),L", 1, 8, cpu => { cpu.WriteHL(cpu.Regs.L); return 8; });
         // 0x76: HALT - skip for now
         // 0x77: LD (HL),A
-        Primary[0x77] = new Instruction("LD (HL),A", 1, 8, cpu => { cpu._mmu.WriteByte(cpu.Regs.HL, cpu.Regs.A); return 8; });
+        Primary[0x77] = new Instruction("LD (HL),A", 1, 8, cpu => { cpu.WriteHL(cpu.Regs.A); return 8; });
 
         // 0x78: LD A,B
         Primary[0x78] = new Instruction("LD A,B", 1, 4, cpu => { cpu.Regs.A = cpu.Regs.B; return 4; });
@@ -161,7 +161,7 @@ public static class OpcodeTable
         // 0x7D: LD A,L
         Primary[0x7D] = new Instruction("LD A,L", 1, 4, cpu => { cpu.Regs.A = cpu.Regs.L; return 4; });
         // 0x7E: LD A,(HL)
-        Primary[0x7E] = new Instruction("LD A,(HL)", 1, 8, cpu => { cpu.Regs.A = cpu._mmu.ReadByte(cpu.Regs.HL); return 8; });
+        Primary[0x7E] = new Instruction("LD A,(HL)", 1, 8, cpu => { cpu.Regs.A = cpu.ReadHL(); return 8; });
         // 0x7F: LD A,A
         Primary[0x7F] = new Instruction("LD A,A", 1, 4, cpu => { cpu.Regs.A = cpu.Regs.A; return 4; });
 
@@ -219,7 +219,7 @@ public static class OpcodeTable
         Primary[0x36] = new Instruction("LD (HL),d8", 2, 12, cpu =>
         {
             byte value = cpu.ReadImm8();
-            cpu._mmu.WriteByte(cpu.Regs.HL, value);
+            cpu.WriteHL(value);
             return 12;
         });
 
@@ -269,7 +269,7 @@ public static class OpcodeTable
         // 0x86: ADD A,(HL)
         Primary[0x86] = new Instruction("ADD A,(HL)", 1, 8, cpu =>
         {
-            byte value = cpu._mmu.ReadByte(cpu.Regs.HL);
+            byte value = cpu.ReadHL();
             cpu.AddToA(value);
             return 8;
         });
@@ -287,6 +287,105 @@ public static class OpcodeTable
             byte value = cpu.ReadImm8();
             cpu.AddToA(value);
             return 8;
+        });
+
+        // Additional addressing mode instructions
+        // 0x02: LD (BC),A
+        Primary[0x02] = new Instruction("LD (BC),A", 1, 8, cpu =>
+        {
+            cpu.WriteBC(cpu.Regs.A);
+            return 8;
+        });
+
+        // 0x0A: LD A,(BC)
+        Primary[0x0A] = new Instruction("LD A,(BC)", 1, 8, cpu =>
+        {
+            cpu.Regs.A = cpu.ReadBC();
+            return 8;
+        });
+
+        // 0x12: LD (DE),A
+        Primary[0x12] = new Instruction("LD (DE),A", 1, 8, cpu =>
+        {
+            cpu.WriteDE(cpu.Regs.A);
+            return 8;
+        });
+
+        // 0x1A: LD A,(DE)
+        Primary[0x1A] = new Instruction("LD A,(DE)", 1, 8, cpu =>
+        {
+            cpu.Regs.A = cpu.ReadDE();
+            return 8;
+        });
+
+        // 0x22: LD (HL+),A
+        Primary[0x22] = new Instruction("LD (HL+),A", 1, 8, cpu =>
+        {
+            cpu.WriteHLI(cpu.Regs.A);
+            return 8;
+        });
+
+        // 0x2A: LD A,(HL+)
+        Primary[0x2A] = new Instruction("LD A,(HL+)", 1, 8, cpu =>
+        {
+            cpu.Regs.A = cpu.ReadHLI();
+            return 8;
+        });
+
+        // 0x32: LD (HL-),A
+        Primary[0x32] = new Instruction("LD (HL-),A", 1, 8, cpu =>
+        {
+            cpu.WriteHLD(cpu.Regs.A);
+            return 8;
+        });
+
+        // 0x3A: LD A,(HL-)
+        Primary[0x3A] = new Instruction("LD A,(HL-)", 1, 8, cpu =>
+        {
+            cpu.Regs.A = cpu.ReadHLD();
+            return 8;
+        });
+
+        // 0xE0: LDH (a8),A
+        Primary[0xE0] = new Instruction("LDH (a8),A", 2, 12, cpu =>
+        {
+            cpu.WriteHighImm8(cpu.Regs.A);
+            return 12;
+        });
+
+        // 0xF0: LDH A,(a8)
+        Primary[0xF0] = new Instruction("LDH A,(a8)", 2, 12, cpu =>
+        {
+            cpu.Regs.A = cpu.ReadHighImm8();
+            return 12;
+        });
+
+        // 0xE2: LD (C),A
+        Primary[0xE2] = new Instruction("LD (C),A", 1, 8, cpu =>
+        {
+            cpu.WriteHighC(cpu.Regs.A);
+            return 8;
+        });
+
+        // 0xF2: LD A,(C)
+        Primary[0xF2] = new Instruction("LD A,(C)", 1, 8, cpu =>
+        {
+            cpu.Regs.A = cpu.ReadHighC();
+            return 8;
+        });
+
+        // 0xEA: LD (a16),A
+        Primary[0xEA] = new Instruction("LD (a16),A", 3, 16, cpu =>
+        {
+            cpu.WriteImm16Addr(cpu.Regs.A);
+            return 16;
+        });
+
+        // 0xFA: LD A,(a16)
+        Primary[0xFA] = new Instruction("LD A,(a16)", 3, 16, cpu =>
+        {
+            cpu.Regs.A = cpu.ReadImm16Addr();
+            return 16;
         });
     }
 
