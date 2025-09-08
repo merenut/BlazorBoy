@@ -136,37 +136,30 @@ Dependencies:
 Testing:
 - Unit tests for memory regions, echo, and restricted zones.
 
-Current implementation status (as of 2025-09-07):
-- Implemented
-  - Echo RAM mirroring E000–FDFF → C000–DDFF (Mmu.ReadByte/WriteByte).
-  - Unusable region 0xFEA0–0xFEFF returns 0xFF; writes ignored.
-  - Post-BIOS defaults initialized (InitializePostBiosDefaults) and backing fields exist for key I/O registers.
-  - Word helpers ReadWord/WriteWord implemented.
-  - ROM access via Cartridge.ReadRom and Cartridge.Detect (MBC0 only).
-  - Emulator frame loop accumulates cycles toward 70224 per frame (Emulator.StepFrame).
+**Phase 1: COMPLETE** (as of 2025-09-08)
 
-- Needs fixes/remaining to complete Phase 1
-  - I/O region wiring:
-    - ReadByte currently returns 0xFF for 0xFF00–0xFF7F. It should call ReadIoRegister to return stubbed values (e.g., JOYP lower nibble reads 1s, IF upper bits forced to 1).
-    - WriteByte currently latches to _mem for 0xFF00–0xFF7F. It should call WriteIoRegister to enforce behavior (e.g., DIV write clears to 0).
-  - Constants bug:
-    - Mmu.IoStart and InterruptEnable reference IoRegs (e.g., IoRegs.P1_JOYP, IoRegs.IE), but IoRegs does not exist. Either:
-      - Replace with literal constants (IoStart = 0xFF00, InterruptEnable = 0xFFFF), or
-      - Add a new static class IoRegs with P1_JOYP = 0xFF00 and IE = 0xFFFF (preferred for clarity).
-  - IE/IF defaults are set, but IF/IE should be consistently exposed via ReadIoRegister/WriteIoRegister to match stub behavior (IF upper three bits read as 1; IE is at 0xFFFF outside I/O region).
-  - InitializePostBiosDefaults currently writes to _mem; since I/O reads should come from ReadIoRegister, ensure backing fields mirror these defaults (they already do) and wire the read/write paths as above.
-  - Tests: no unit tests yet for memory map, echo, unusable area, and I/O stubs.
+All Phase 1 requirements have been implemented and tested:
+- ✅ Echo RAM mirroring E000–FDFF → C000–DDFF (Mmu.ReadByte/WriteByte).
+- ✅ Unusable region 0xFEA0–0xFEFF returns 0xFF; writes ignored.
+- ✅ I/O region wiring: ReadByte calls ReadIoRegister, WriteByte calls WriteIoRegister.
+- ✅ IoRegs class provides all I/O register constants; Mmu uses them correctly.
+- ✅ IF/IE register semantics: IF upper 3 bits forced to 1s, IE full 8-bit read/write.
+- ✅ Post-BIOS defaults initialized (InitializePostBiosDefaults) with proper backing fields.
+- ✅ Word helpers ReadWord/WriteWord implemented.
+- ✅ ROM access via Cartridge.ReadRom and Cartridge.Detect (MBC0 only).
+- ✅ Emulator frame loop accumulates cycles toward 70224 per frame (Emulator.StepFrame).
+- ✅ Complete unit test coverage: 39 tests passing (Echo RAM, unusable region, I/O stubs, etc.)
 
 Checklist to close Phase 1:
-- [ ] Add IoRegs class or correct Mmu.IoStart/InterruptEnable constants.
-- [ ] Route I/O reads to ReadIoRegister in Mmu.ReadByte.
-- [ ] Route I/O writes to WriteIoRegister in Mmu.WriteByte.
-- [ ] Verify IF (0xFF0F) and IE (0xFFFF) read/write semantics match stub masks noted in code.
-- [ ] Add minimal unit tests:
-  - [ ] Echo mirroring (E000–FDFF mirrors C000–DDFF)
-  - [ ] Unusable region returns 0xFF and ignores writes
-  - [ ] JOYP lower nibble read as 1s; DIV write clears; IF upper bits read as 1s
-  - [ ] IE at 0xFFFF read/write round-trips
+- [x] Add IoRegs class or correct Mmu.IoStart/InterruptEnable constants.
+- [x] Route I/O reads to ReadIoRegister in Mmu.ReadByte.
+- [x] Route I/O writes to WriteIoRegister in Mmu.WriteByte.
+- [x] Verify IF (0xFF0F) and IE (0xFFFF) read/write semantics match stub masks noted in code.
+- [x] Add minimal unit tests:
+  - [x] Echo mirroring (E000–FDFF mirrors C000–DDFF)
+  - [x] Unusable region returns 0xFF and ignores writes
+  - [x] JOYP lower nibble read as 1s; DIV write clears; IF upper bits read as 1s
+  - [x] IE at 0xFFFF read/write round-trips
 
 ### 3.2 Phase 2: Cartridge & MBCs
 Files:
