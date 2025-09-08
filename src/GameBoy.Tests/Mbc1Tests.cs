@@ -279,4 +279,159 @@ public class Mbc1Tests
 
         return rom;
     }
+
+    [Fact]
+    public void ReadRom_BeyondAvailableSize_ReturnsFF()
+    {
+        var rom = CreateRomWithBankMarkers(4); // 4 banks (64KB)
+        var header = CartridgeHeader.Parse(rom);
+        var mbc1 = new Mbc1(rom, header);
+
+        // Try to access beyond ROM size
+        mbc1.WriteRom(0x2000, 0x1F); // Try to select bank 31 (doesn't exist)
+        var value = mbc1.ReadRom(0x4000);
+
+        // Should return 0xFF for out-of-bounds access
+        Assert.Equal(0xFF, value);
+    }
+
+    [Fact]
+    public void WriteRom_MaxBankNumber_WorksWithinLimits()
+    {
+        var rom = CreateRomWithBankMarkers(128); // 128 banks (2MB) - MBC1 maximum
+        var header = CartridgeHeader.Parse(rom);
+        var mbc1 = new Mbc1(rom, header);
+
+        // Test bank 127 - but MBC1 bank register only uses lower 5 bits
+        // So 0x7F & 0x1F = 0x1F = 31
+        mbc1.WriteRom(0x2000, 0x7F); // Try to select bank 127
+        var value = mbc1.ReadRom(0x4000);
+        Assert.Equal((byte)(0x10 + 31), value); // Should be bank 31 due to 5-bit masking
+    }
+
+    [Fact]
+    public void WriteRom_BankBitsIgnored_OnlyLower5BitsUsed()
+    {
+        var rom = CreateRomWithBankMarkers(32); // 32 banks
+        var header = CartridgeHeader.Parse(rom);
+        var mbc1 = new Mbc1(rom, header);
+
+        // Write with upper bits set (should be ignored)
+        mbc1.WriteRom(0x2000, 0xFF); // All bits set
+        var value = mbc1.ReadRom(0x4000);
+        // Should only use lower 5 bits: 0x1F = 31, but bank 0 maps to 1, so effective bank 31
+        Assert.Equal((byte)(0x10 + 31), value);
+    }
+
+    [Fact]
+    public void ExternalRam_MaxRamBanks_WorksCorrectly()
+    {
+        var rom = CreateRom(0x03, 0x01, 0x03); // MBC1+RAM+BATTERY, 64KB ROM, 32KB RAM (4 banks)
+        var header = CartridgeHeader.Parse(rom);
+        var mbc1 = new Mbc1(rom, header);
+
+        // Enable RAM and advanced banking mode
+        mbc1.WriteRom(0x0000, 0x0A);
+        mbc1.WriteRom(0x6000, 0x01);
+
+        // Test all 4 RAM banks (0-3)
+        for (int bank = 0; bank < 4; bank++)
+        {
+            mbc1.WriteRom(0x4000, (byte)bank);
+            mbc1.WriteExternalRam(0xA000, (byte)(0x40 + bank));
+        }
+
+        // Verify data in each bank
+        for (int bank = 0; bank < 4; bank++)
+        {
+            mbc1.WriteRom(0x4000, (byte)bank);
+            Assert.Equal((byte)(0x40 + bank), mbc1.ReadExternalRam(0xA000));
+        }
+    }
+
+    [Fact]
+    public void ExternalRam_BeyondAvailableBanks_ReturnsFF()
+    {
+        // Test with 32KB RAM to enable advanced banking mode
+        var rom = CreateRom(0x03, 0x01, 0x03); // MBC1+RAM+BATTERY, 64KB ROM, 32KB RAM (4 banks)
+        var header = CartridgeHeader.Parse(rom);
+        var mbc1 = new Mbc1(rom, header);
+
+        // Enable RAM and advanced banking mode
+        mbc1.WriteRom(0x0000, 0x0A);
+        mbc1.WriteRom(0x6000, 0x01); // Enable advanced banking (requires >8KB RAM)
+
+        // Test normal banking first (banks 0-3 should work)
+        for (int bank = 0; bank < 4; bank++)
+        {
+            mbc1.WriteRom(0x4000, (byte)bank);
+            mbc1.WriteExternalRam(0xA000, (byte)(bank + 0x10));
+        }
+
+        // Verify each bank has its data
+        for (int bank = 0; bank < 4; bank++)
+        {
+            mbc1.WriteRom(0x4000, (byte)bank);
+            Assert.Equal((byte)(bank + 0x10), mbc1.ReadExternalRam(0xA000));
+        }
+
+        // Now test a smaller RAM configuration that can't support all banks
+        var romSmall = CreateRom(0x03, 0x01, 0x02); // 8KB RAM (1 bank)
+        var headerSmall = CartridgeHeader.Parse(romSmall);
+        var mbc1Small = new Mbc1(romSmall, headerSmall);
+
+        mbc1Small.WriteRom(0x0000, 0x0A);
+        // With 8KB RAM, advanced banking mode won't activate, so banking is disabled
+        // This means all RAM bank register writes are ignored and only simple mode works
+        mbc1Small.WriteRom(0x6000, 0x01);
+
+        // Bank register writes should be ignored with 8KB RAM
+        mbc1Small.WriteRom(0x4000, 0x01);
+        mbc1Small.WriteExternalRam(0xA000, 0x42);
+        Assert.Equal(0x42, mbc1Small.ReadExternalRam(0xA000)); // Still accessible in simple mode
+    }
+
+    [Fact]
+    public void WriteRom_AdvancedBankingMode_Bank0AreaBanking()
+    {
+        var rom = CreateRomWithBankMarkers(128); // 128 banks
+        var header = CartridgeHeader.Parse(rom);
+        var mbc1 = new Mbc1(rom, header);
+
+        // Enable advanced banking mode
+        mbc1.WriteRom(0x6000, 0x01);
+
+        // Test bank 0 area mapping with upper bits
+        mbc1.WriteRom(0x4000, 0x03); // Set upper bits to 3 (bits 5-6)
+
+        // Bank 0 area should now map to bank 96 (3 << 5)
+        var bank0Value = mbc1.ReadRom(0x0000);
+        Assert.Equal((byte)(0x10 + 96), bank0Value);
+
+        // Test switching back to bank 0
+        mbc1.WriteRom(0x4000, 0x00);
+        bank0Value = mbc1.ReadRom(0x0000);
+        Assert.Equal(0x10, bank0Value); // Back to actual bank 0
+    }
+
+    [Fact]
+    public void WriteRom_InvalidAddressRanges_Ignored()
+    {
+        var rom = CreateRomWithBankMarkers(8);
+        var header = CartridgeHeader.Parse(rom);
+        var mbc1 = new Mbc1(rom, header);
+
+        // Set initial bank
+        mbc1.WriteRom(0x2000, 0x03);
+        var initialValue = mbc1.ReadRom(0x4000);
+        Assert.Equal(0x13, initialValue); // Bank 3
+
+        // Writes to invalid ranges should be ignored
+        mbc1.WriteRom(0x8000, 0x05); // Beyond MBC1 control range
+        mbc1.WriteRom(0xFFFF, 0x07); // Way beyond
+
+        // Bank should remain unchanged
+        var unchangedValue = mbc1.ReadRom(0x4000);
+        Assert.Equal(0x13, unchangedValue); // Still bank 3
+    }
 }

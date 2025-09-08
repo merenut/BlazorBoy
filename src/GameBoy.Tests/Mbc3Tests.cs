@@ -310,4 +310,205 @@ public class Mbc3Tests
 
         return rom;
     }
+
+    [Fact]
+    public void ReadRom_BeyondAvailableSize_ReturnsFF()
+    {
+        var rom = CreateRomWithBankMarkers(8); // 8 banks (128KB)
+        var header = CartridgeHeader.Parse(rom);
+        var mbc3 = new Mbc3(rom, header);
+
+        // Try to access beyond ROM size
+        mbc3.WriteRom(0x2000, 0x7F); // Try to select bank 127 (doesn't exist)
+        var value = mbc3.ReadRom(0x4000);
+
+        // Should return 0xFF for out-of-bounds access
+        Assert.Equal(0xFF, value);
+    }
+
+    [Fact]
+    public void WriteRom_MaxBankNumber_WorksWithinLimits()
+    {
+        var rom = CreateRomWithBankMarkers(64); // 64 banks (1MB) - reasonable MBC3 size
+        var header = CartridgeHeader.Parse(rom);
+        var mbc3 = new Mbc3(rom, header);
+
+        // Test high bank selection
+        mbc3.WriteRom(0x2000, 0x3F); // Bank 63
+        var value = mbc3.ReadRom(0x4000);
+        Assert.Equal((byte)(0x10 + 63), value); // Bank 63 marker
+    }
+
+    [Fact]
+    public void WriteRom_Bank7BitLimit_OnlyLower7BitsUsed()
+    {
+        var rom = CreateRomWithBankMarkers(64); // 64 banks
+        var header = CartridgeHeader.Parse(rom);
+        var mbc3 = new Mbc3(rom, header);
+
+        // Write with upper bit set (should be ignored)
+        mbc3.WriteRom(0x2000, 0xFF); // All bits set
+        var value = mbc3.ReadRom(0x4000);
+        // Should only use lower 7 bits: 0x7F = 127, but limited by available banks
+        // With 64 banks, this should wrap or return FF
+        Assert.Equal(0xFF, value);
+    }
+
+    [Fact]
+    public void ExternalRam_MaxRamBanks_WorksCorrectly()
+    {
+        var rom = CreateRom(0x13, 0x02, 0x03); // MBC3+RAM+BATTERY, 128KB ROM, 32KB RAM (4 banks)
+        var header = CartridgeHeader.Parse(rom);
+        var mbc3 = new Mbc3(rom, header);
+
+        // Enable RAM
+        mbc3.WriteRom(0x0000, 0x0A);
+
+        // Test all 4 RAM banks (0-3)
+        for (int bank = 0; bank < 4; bank++)
+        {
+            mbc3.WriteRom(0x4000, (byte)bank);
+            mbc3.WriteExternalRam(0xA000, (byte)(0x50 + bank));
+        }
+
+        // Verify data in each bank
+        for (int bank = 0; bank < 4; bank++)
+        {
+            mbc3.WriteRom(0x4000, (byte)bank);
+            Assert.Equal((byte)(0x50 + bank), mbc3.ReadExternalRam(0xA000));
+        }
+    }
+
+    [Fact]
+    public void ExternalRam_BeyondAvailableBanks_ReturnsFF()
+    {
+        var rom = CreateRom(0x11, 0x02, 0x02); // MBC3, 128KB ROM, 8KB RAM (1 bank)
+        var header = CartridgeHeader.Parse(rom);
+        var mbc3 = new Mbc3(rom, header);
+
+        // Enable RAM
+        mbc3.WriteRom(0x0000, 0x0A);
+
+        // Try to access RAM bank 2 (doesn't exist with 8KB RAM)
+        mbc3.WriteRom(0x4000, 0x02);
+        Assert.Equal(0xFF, mbc3.ReadExternalRam(0xA000));
+
+        // Write should be ignored
+        mbc3.WriteExternalRam(0xA000, 0x42);
+        Assert.Equal(0xFF, mbc3.ReadExternalRam(0xA000));
+    }
+
+    [Fact]
+    public void RtcRegisters_BoundaryValues_HandledCorrectly()
+    {
+        var rom = CreateRom(0x0F, 0x02, 0x00); // MBC3+TIMER+BATTERY
+        var header = CartridgeHeader.Parse(rom);
+        var mbc3 = new Mbc3(rom, header);
+
+        // Enable timer access
+        mbc3.WriteRom(0x0000, 0x0A);
+
+        // Test that RTC registers accept and store boundary values (no clamping)
+        mbc3.WriteRom(0x4000, 0x08); // RTC Seconds
+        mbc3.WriteExternalRam(0xA000, 59); // Max valid seconds
+        Assert.Equal(59, mbc3.ReadExternalRam(0xA000));
+
+        mbc3.WriteExternalRam(0xA000, 60); // Invalid seconds - should be stored as-is
+        Assert.Equal(60, mbc3.ReadExternalRam(0xA000)); // MBC3 stores raw value
+
+        mbc3.WriteRom(0x4000, 0x09); // RTC Minutes  
+        mbc3.WriteExternalRam(0xA000, 59); // Max valid minutes
+        Assert.Equal(59, mbc3.ReadExternalRam(0xA000));
+
+        mbc3.WriteRom(0x4000, 0x0A); // RTC Hours
+        mbc3.WriteExternalRam(0xA000, 23); // Max valid hours
+        Assert.Equal(23, mbc3.ReadExternalRam(0xA000));
+    }
+
+    [Fact]
+    public void RtcRegisters_InvalidRegisterAccess_ReturnsFF()
+    {
+        var rom = CreateRom(0x0F, 0x02, 0x00); // MBC3+TIMER+BATTERY
+        var header = CartridgeHeader.Parse(rom);
+        var mbc3 = new Mbc3(rom, header);
+
+        // Enable timer access
+        mbc3.WriteRom(0x0000, 0x0A);
+
+        // Try to access invalid RTC register
+        mbc3.WriteRom(0x4000, 0x0D); // Beyond RTC register range
+        Assert.Equal(0xFF, mbc3.ReadExternalRam(0xA000));
+
+        mbc3.WriteRom(0x4000, 0xFF); // Way beyond
+        Assert.Equal(0xFF, mbc3.ReadExternalRam(0xA000));
+    }
+
+    [Fact]
+    public void WriteRom_InvalidAddressRanges_Ignored()
+    {
+        var rom = CreateRomWithBankMarkers(8);
+        var header = CartridgeHeader.Parse(rom);
+        var mbc3 = new Mbc3(rom, header);
+
+        // Set initial bank
+        mbc3.WriteRom(0x2000, 0x05);
+        var initialValue = mbc3.ReadRom(0x4000);
+        Assert.Equal(0x15, initialValue); // Bank 5
+
+        // Writes to invalid ranges should be ignored
+        mbc3.WriteRom(0x8000, 0x07); // Beyond MBC3 control range
+
+        // Bank should remain unchanged
+        var unchangedValue = mbc3.ReadRom(0x4000);
+        Assert.Equal(0x15, unchangedValue); // Still bank 5
+    }
+
+    [Fact]
+    public void RtcLatch_ExtremeValues_HandledGracefully()
+    {
+        var rom = CreateRom(0x0F, 0x02, 0x00); // MBC3+TIMER+BATTERY
+        var header = CartridgeHeader.Parse(rom);
+        var mbc3 = new Mbc3(rom, header);
+
+        // Enable timer access
+        mbc3.WriteRom(0x0000, 0x0A);
+
+        // Multiple latch attempts should be handled gracefully
+        for (int i = 0; i < 10; i++)
+        {
+            mbc3.WriteRom(0x6000, 0x00);
+            mbc3.WriteRom(0x6000, 0x01);
+        }
+
+        // Should still be able to read RTC values
+        mbc3.WriteRom(0x4000, 0x08); // Seconds
+        var seconds = mbc3.ReadExternalRam(0xA000);
+        Assert.InRange(seconds, 0, 59);
+    }
+
+    [Fact]
+    public void BatteryInterface_LargeRamSize_HandledCorrectly()
+    {
+        var rom = CreateRom(0x10, 0x04, 0x04); // MBC3+TIMER+RAM+BATTERY (with RTC), 512KB ROM, 128KB RAM
+        var header = CartridgeHeader.Parse(rom);
+        var mbc3 = new Mbc3(rom, header);
+
+        // Enable RAM and write data across multiple banks
+        mbc3.WriteRom(0x0000, 0x0A);
+
+        // Write to different banks
+        for (int bank = 0; bank < 16; bank++) // 128KB = 16 banks
+        {
+            mbc3.WriteRom(0x4000, (byte)bank);
+            mbc3.WriteExternalRam(0xA000, (byte)(bank + 1));
+        }
+
+        // Get external RAM data
+        var ramData = mbc3.GetExternalRam();
+        Assert.NotNull(ramData);
+        Assert.Equal(128 * 1024 + 5, ramData.Length); // RAM + RTC (cartridge type 0x10 has RTC)
+
+        // Verify data in first bank
+        Assert.Equal(1, ramData[0]);
+    }
 }

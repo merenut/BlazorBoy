@@ -317,4 +317,248 @@ public class Mbc5Tests
 
         return rom;
     }
+
+    [Fact]
+    public void ReadRom_BeyondAvailableSize_ReturnsFF()
+    {
+        var rom = CreateRomWithBankMarkers(16); // 16 banks (256KB)
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Try to access beyond ROM size with 9-bit banking
+        mbc5.WriteRom(0x2000, 0xFF); // Lower 8 bits = 255
+        mbc5.WriteRom(0x3000, 0x01); // Upper bit = 1, so bank = 256 + 255 = 511
+        var value = mbc5.ReadRom(0x4000);
+
+        // Should return 0xFF for out-of-bounds access
+        Assert.Equal(0xFF, value);
+    }
+
+    [Fact]
+    public void WriteRom_MaxBankNumber_WorksAtLimits()
+    {
+        var rom = CreateRomWithBankMarkers(512); // 512 banks (8MB) - MBC5 maximum
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Test maximum bank selection (511)
+        mbc5.WriteRom(0x2000, 0xFF); // Lower 8 bits = 255
+        mbc5.WriteRom(0x3000, 0x01); // Upper bit = 1
+        // Total bank = (1 << 8) | 255 = 256 + 255 = 511
+        var value = mbc5.ReadRom(0x4000);
+        Assert.Equal(0x0F, value); // Bank 511 marker: 0x10 + (511 & 0xFF) = 0x10 + 0xFF = 0x0F (wrapped)
+    }
+
+    [Fact]
+    public void WriteRom_9BitBanking_FullRangeTest()
+    {
+        var rom = CreateRomWithBankMarkers(512); // Full 512 banks
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Test various 9-bit combinations
+        var testCases = new[]
+        {
+            (lower: 0x00, upper: 0x00, expectedBank: 0),     // Bank 0
+            (lower: 0x01, upper: 0x00, expectedBank: 1),     // Bank 1
+            (lower: 0xFF, upper: 0x00, expectedBank: 255),   // Bank 255
+            (lower: 0x00, upper: 0x01, expectedBank: 256),   // Bank 256
+            (lower: 0x01, upper: 0x01, expectedBank: 257),   // Bank 257
+            (lower: 0xFF, upper: 0x01, expectedBank: 511),   // Bank 511 (maximum)
+        };
+
+        foreach (var (lower, upper, expectedBank) in testCases)
+        {
+            mbc5.WriteRom(0x2000, (byte)lower);
+            mbc5.WriteRom(0x3000, (byte)upper);
+            var value = mbc5.ReadRom(0x4000);
+            Assert.Equal((byte)(0x10 + (expectedBank & 0xFF)), value);
+        }
+    }
+
+    [Fact]
+    public void WriteRom_UpperBitMasking_OnlyBit0Used()
+    {
+        var rom = CreateRomWithBankMarkers(512);
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Test that only bit 0 of upper register is used
+        mbc5.WriteRom(0x2000, 0x10); // Bank 16
+        mbc5.WriteRom(0x3000, 0xFF); // All bits set, but only bit 0 should matter
+
+        var value = mbc5.ReadRom(0x4000);
+        // Should be bank 256 + 16 = 272
+        Assert.Equal((byte)(0x10 + 16), value); // Bank 272 marker (truncated)
+
+        // Test with only bit 0 set
+        mbc5.WriteRom(0x3000, 0x01);
+        value = mbc5.ReadRom(0x4000);
+        Assert.Equal((byte)(0x10 + 16), value); // Should be the same
+    }
+
+    [Fact]
+    public void ExternalRam_Max16Banks_WorksCorrectly()
+    {
+        var rom = CreateRom(0x1B, 0x03, 0x04); // MBC5+RAM+BATTERY, 256KB ROM, 128KB RAM (16 banks)
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Enable RAM
+        mbc5.WriteRom(0x0000, 0x0A);
+
+        // Test all 16 RAM banks (0-15)
+        for (int bank = 0; bank < 16; bank++)
+        {
+            mbc5.WriteRom(0x4000, (byte)bank);
+            mbc5.WriteExternalRam(0xA000, (byte)(0x60 + bank));
+        }
+
+        // Verify data in each bank
+        for (int bank = 0; bank < 16; bank++)
+        {
+            mbc5.WriteRom(0x4000, (byte)bank);
+            Assert.Equal((byte)(0x60 + bank), mbc5.ReadExternalRam(0xA000));
+        }
+    }
+
+    [Fact]
+    public void ExternalRam_4BitBankMasking_OnlyLower4BitsUsed()
+    {
+        var rom = CreateRom(0x1B, 0x03, 0x04); // MBC5+RAM+BATTERY, 128KB RAM
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Enable RAM
+        mbc5.WriteRom(0x0000, 0x0A);
+
+        // Write with upper bits set (should be ignored)
+        mbc5.WriteRom(0x4000, 0xFF); // All bits set
+        mbc5.WriteExternalRam(0xA000, 0x42);
+
+        // Should only use lower 4 bits: 0xFF & 0x0F = 0x0F = 15
+        mbc5.WriteRom(0x4000, 0x0F); // Bank 15 explicitly
+        Assert.Equal(0x42, mbc5.ReadExternalRam(0xA000));
+    }
+
+    [Fact]
+    public void ExternalRam_BeyondAvailableBanks_HandledGracefully()
+    {
+        var rom = CreateRom(0x1A, 0x03, 0x02); // MBC5+RAM, 256KB ROM, 8KB RAM (1 bank)
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Enable RAM
+        mbc5.WriteRom(0x0000, 0x0A);
+
+        // Try to access banks beyond available (1-15 don't exist)
+        for (int bank = 1; bank < 16; bank++)
+        {
+            mbc5.WriteRom(0x4000, (byte)bank);
+            Assert.Equal(0xFF, mbc5.ReadExternalRam(0xA000));
+
+            // Writes should be ignored
+            mbc5.WriteExternalRam(0xA000, 0x42);
+            Assert.Equal(0xFF, mbc5.ReadExternalRam(0xA000));
+        }
+    }
+
+    [Fact]
+    public void WriteRom_BoundaryAddresses_HandledCorrectly()
+    {
+        var rom = CreateRomWithBankMarkers(16);
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Test boundary addresses for control registers
+
+        // RAM enable boundary (0x0000-0x1FFF)
+        mbc5.WriteRom(0x1FFF, 0x0A); // Should enable RAM
+        mbc5.WriteExternalRam(0xA000, 0x42);
+        Assert.Equal(0x42, mbc5.ReadExternalRam(0xA000));
+
+        // Lower ROM bank boundary (0x2000-0x2FFF)
+        mbc5.WriteRom(0x2FFF, 0x05); // Should select bank 5
+        var value = mbc5.ReadRom(0x4000);
+        Assert.Equal(0x15, value);
+
+        // Upper ROM bank boundary (0x3000-0x3FFF)
+        mbc5.WriteRom(0x3000, 0x01); // Should set upper bit
+        value = mbc5.ReadRom(0x4000);
+        // Bank should now be 256 + 5 = 261
+        Assert.Equal(0xFF, value); // Out of bounds for 16-bank ROM
+
+        // RAM bank boundary (0x4000-0x5FFF)
+        mbc5.WriteRom(0x5FFF, 0x02); // Should select RAM bank 2
+        mbc5.WriteExternalRam(0xA000, 0x33);
+        mbc5.WriteRom(0x4000, 0x02); // Verify it's bank 2
+        Assert.Equal(0x33, mbc5.ReadExternalRam(0xA000));
+    }
+
+    [Fact]
+    public void ReadRom_LargeRomEdgeCases_HandledCorrectly()
+    {
+        var rom = CreateRomWithBankMarkers(256); // 256 banks (4MB)
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Test reading from the last available bank
+        mbc5.WriteRom(0x2000, 0xFF); // Bank 255
+        mbc5.WriteRom(0x3000, 0x00); // No upper bit
+        var value = mbc5.ReadRom(0x4000);
+        Assert.Equal(0x0F, value); // Bank 255 marker: 0x10 + 255 = 0x10F, wrapped to 0x0F
+
+        // Test reading just beyond available banks
+        mbc5.WriteRom(0x2000, 0x00); // Bank 256 (0x100)
+        mbc5.WriteRom(0x3000, 0x01); // Upper bit set
+        value = mbc5.ReadRom(0x4000);
+        Assert.Equal(0xFF, value); // Out of bounds
+    }
+
+    [Fact]
+    public void BatteryInterface_MaxRamSize_HandledCorrectly()
+    {
+        var rom = CreateRom(0x1B, 0x08, 0x04); // MBC5+RAM+BATTERY, 8MB ROM, 128KB RAM
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Enable RAM and write data across all banks
+        mbc5.WriteRom(0x0000, 0x0A);
+
+        // Write unique data to each RAM bank
+        for (int bank = 0; bank < 16; bank++)
+        {
+            mbc5.WriteRom(0x4000, (byte)bank);
+            mbc5.WriteExternalRam(0xA000, (byte)(bank * 2 + 1));
+        }
+
+        // Get external RAM data
+        var ramData = mbc5.GetExternalRam();
+        Assert.NotNull(ramData);
+        Assert.Equal(128 * 1024, ramData.Length);
+
+        // Verify data in first bank
+        Assert.Equal(1, ramData[0]); // Bank 0 data
+
+        // Verify data in second bank (starts at offset 8192)
+        Assert.Equal(3, ramData[8192]); // Bank 1 data
+    }
+
+    [Fact]
+    public void WriteRom_StressTest_MultipleRapidSwitches()
+    {
+        var rom = CreateRomWithBankMarkers(128);
+        var header = CartridgeHeader.Parse(rom);
+        var mbc5 = new Mbc5(rom, header);
+
+        // Rapidly switch between banks and verify consistency
+        for (int i = 0; i < 100; i++)
+        {
+            byte bank = (byte)(i % 128);
+            mbc5.WriteRom(0x2000, bank);
+
+            var value = mbc5.ReadRom(0x4000);
+            Assert.Equal((byte)(0x10 + bank), value);
+        }
+    }
 }
