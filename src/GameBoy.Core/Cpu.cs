@@ -71,6 +71,12 @@ public sealed class Cpu
     private int _imeEnableDelay;
 
     /// <summary>
+    /// Indicates if the HALT bug should be triggered (next instruction executed twice).
+    /// Occurs when HALT is executed with IME=0 and IE&IF≠0.
+    /// </summary>
+    private bool _haltBugTriggered;
+
+    /// <summary>
     /// Initializes the CPU with the given memory management unit.
     /// </summary>
     public Cpu(Mmu mmu)
@@ -95,6 +101,7 @@ public sealed class Cpu
         InterruptsEnabled = true;
         IsHalted = false;
         _imeEnableDelay = 0;
+        _haltBugTriggered = false;
     }
 
     /// <summary>
@@ -124,11 +131,19 @@ public sealed class Cpu
             }
         }
 
-        byte opcode = _mmu.ReadByte(Regs.PC++);
+        byte opcode = _mmu.ReadByte(Regs.PC);
+        
+        // Handle HALT bug - PC doesn't increment on first fetch when bug is triggered
+        if (!_haltBugTriggered)
+        {
+            Regs.PC++; // Normal PC increment
+        }
+        else
+        {
+            _haltBugTriggered = false; // Clear the flag - next fetch will increment PC normally
+        }
+        
         int cycles;
-
-        // TODO: HALT bug implementation would go here
-        // Currently commented out due to complexity
 
         // Handle CB-prefixed instructions
         if (opcode == 0xCB)
@@ -557,8 +572,14 @@ public sealed class Cpu
     {
         IsHalted = halted;
 
-        // TODO: Implement HALT bug when IME=0 and IE&IF≠0
-        // This is a complex hardware quirk that requires more detailed research
+        // Implement HALT bug when IME=0 and IE&IF≠0
+        // The bug causes the instruction after HALT to be executed twice
+        if (halted && !InterruptsEnabled && _mmu.InterruptController.TryGetPending(out _))
+        {
+            // HALT bug: CPU doesn't actually halt, and the next instruction executes twice
+            IsHalted = false;
+            _haltBugTriggered = true;
+        }
     }
 
     /// <summary>

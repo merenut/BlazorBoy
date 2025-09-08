@@ -278,4 +278,81 @@ public class InterruptControllerTests
         // Verify all 5 interrupt sources are properly set
         Assert.True((interruptController.IF & 0x1F) == 0x1F, "All 5 interrupt bits should be set");
     }
+
+    [Fact]
+    public void IF_IE_MaskingEdgeCases_SimultaneousOperations()
+    {
+        var controller = new InterruptController();
+
+        // Test simultaneous IF and IE operations with different bit patterns
+        controller.SetIF(0xAA); // 10101010 pattern
+        controller.SetIE(0x55); // 01010101 pattern
+
+        // IF should be masked to lower 5 bits: 0xAA & 0x1F = 0x0A, plus upper bits = 0xEA
+        Assert.Equal(0xEA, controller.IF);
+        // IE should retain full 8-bit value
+        Assert.Equal(0x55, controller.IE);
+
+        // Test that masked IF works correctly with TryGetPending
+        bool hasPending = controller.TryGetPending(out InterruptType interruptType);
+        Assert.False(hasPending); // 0x0A & 0x55 = 0x00, no overlap
+
+        // Set IE to create overlap
+        controller.SetIE(0x0A); // Matches the masked IF bits
+        hasPending = controller.TryGetPending(out interruptType);
+        Assert.True(hasPending);
+        Assert.Equal(InterruptType.LCDStat, interruptType); // Bit 1 is highest priority in overlap
+    }
+
+    [Fact]  
+    public void IF_IE_PartialMaskingScenarios()
+    {
+        var controller = new InterruptController();
+
+        // Test each individual interrupt bit masking behavior
+        for (byte bit = 0; bit < 8; bit++)
+        {
+            byte setValue = (byte)(1 << bit);
+            controller.SetIF(setValue);
+
+            if (bit < 5)
+            {
+                // Lower 5 bits should be preserved plus upper 3 bits
+                byte expectedIF = (byte)(setValue | 0xE0);
+                Assert.Equal(expectedIF, controller.IF);
+            }
+            else
+            {
+                // Upper 3 bits beyond bit 4 should be masked out, only forced upper bits remain
+                Assert.Equal(0xE0, controller.IF);
+            }
+        }
+    }
+
+    [Fact]
+    public void TryGetPending_ComplexPriorityScenarios()
+    {
+        var controller = new InterruptController();
+
+        // Test that priority is respected even with complex bit patterns
+        controller.SetIF(0x1E); // All except VBlank (bits 1,2,3,4)
+        controller.SetIE(0x1F); // All enabled
+
+        // Should return LCDStat (bit 1) since VBlank (bit 0) is not set
+        bool hasPending = controller.TryGetPending(out InterruptType interruptType);
+        Assert.True(hasPending);
+        Assert.Equal(InterruptType.LCDStat, interruptType);
+
+        // Now add VBlank and verify it takes priority
+        controller.Request(InterruptType.VBlank);
+        hasPending = controller.TryGetPending(out interruptType);
+        Assert.True(hasPending);
+        Assert.Equal(InterruptType.VBlank, interruptType);
+
+        // Test that disabled interrupts don't interfere with priority
+        controller.SetIE(0x0A); // Enable only LCDStat and Serial (bits 1,3)
+        hasPending = controller.TryGetPending(out interruptType);
+        Assert.True(hasPending);
+        Assert.Equal(InterruptType.LCDStat, interruptType); // LCDStat has higher priority than Serial
+    }
 }
