@@ -505,7 +505,7 @@ public sealed class Cpu
     /// <summary>
     /// Gets the value of the Zero flag.
     /// </summary>
-    internal bool GetZeroFlag()
+    public bool GetZeroFlag()
     {
         return (Regs.F & 0x80) != 0;
     }
@@ -513,7 +513,7 @@ public sealed class Cpu
     /// <summary>
     /// Gets the value of the Carry flag.
     /// </summary>
-    internal bool GetCarryFlag()
+    public bool GetCarryFlag()
     {
         return (Regs.F & 0x10) != 0;
     }
