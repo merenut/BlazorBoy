@@ -254,7 +254,7 @@ public class InterruptControllerTests
         interruptController.SetIF(0x00); // Clear all bits
 
         // Test all documented API usage examples work correctly:
-        
+
         // PPU: Request VBlank interrupt at end of frame
         interruptController.Request(InterruptType.VBlank);
         Assert.Equal(0xE1, interruptController.IF); // 0x01 | 0xE0
