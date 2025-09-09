@@ -90,25 +90,22 @@ public sealed class Emulator
     public bool HasBatteryRam => _mmu.Cartridge is IBatteryBacked batteryCartridge && batteryCartridge.HasBattery;
 
     /// <summary>
-    /// Runs a single CPU step and returns whether a frame is ready.
-    /// Accumulates cycles until 70224 cycles reached (one frame).
+    /// Runs the emulator until a full frame is completed (70224 cycles).
     /// </summary>
     public bool StepFrame()
     {
-        int cycles = _cpu.Step();
-        _timer.Step(cycles);
-        _ppu.Step(cycles);
-        _serial.Step(cycles);
-        _mmu.StepDma(cycles);
-        _cycleAccumulator += cycles;
-
-        if (_cycleAccumulator >= CyclesPerFrame)
+        while (_cycleAccumulator < CyclesPerFrame)
         {
-            // Frame is complete - reset accumulator for next frame
-            _cycleAccumulator -= CyclesPerFrame;
-            return true;
+            int cycles = _cpu.Step();
+            _timer.Step(cycles);
+            _ppu.Step(cycles);
+            _serial.Step(cycles);
+            _mmu.StepDma(cycles);
+            _cycleAccumulator += cycles;
         }
 
-        return false;
+        // Frame is complete - reset accumulator for next frame
+        _cycleAccumulator -= CyclesPerFrame;
+        return true;
     }
 }
