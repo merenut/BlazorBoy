@@ -30,6 +30,10 @@
         if (firstRender)
         {
             _dotNetRef = DotNetObjectReference.Create(this);
+            
+            // Draw initial frame to ensure canvas shows default background color
+            await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+            
             await JS.InvokeVoidAsync("gbInterop.startRenderLoop", _dotNetRef);
             await _focusable.FocusAsync();
         }

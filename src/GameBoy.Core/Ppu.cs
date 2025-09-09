@@ -114,8 +114,9 @@ public sealed class Ppu
         _wx = 0x00;
         _lyc = 0x00;
 
-        // Clear frame buffer
-        Array.Clear(FrameBuffer);
+        // Clear frame buffer with default background color (lightest green)
+        int defaultColor = Palette.ToRgba(0); // Lightest green with full opacity
+        Array.Fill(FrameBuffer, defaultColor);
     }
 
     /// <summary>

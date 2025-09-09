@@ -158,7 +158,9 @@ public class PpuTests
 
         // Assert
         Assert.Equal(160 * 144, ppu.FrameBuffer.Length);
-        Assert.All(ppu.FrameBuffer, pixel => Assert.Equal(0, pixel));
+        // Frame buffer should be initialized with default background color (opaque pixels)
+        int expectedDefaultColor = Palette.ToRgba(0); // Lightest green with full opacity
+        Assert.All(ppu.FrameBuffer, pixel => Assert.Equal(expectedDefaultColor, pixel));
     }
 
     [Fact]
