@@ -67,16 +67,16 @@ public sealed class Emulator
     {
         // Create a simple checkerboard pattern in tile 0
         // Tile 0 starts at VRAM address 0x8000
-        
+
         // Each tile is 8x8 pixels, 2 bits per pixel, 16 bytes total
         // Each row is 2 bytes (low bits + high bits)
-        
+
         // Create a checkerboard pattern (alternating colors 0 and 3)
         for (int y = 0; y < 8; y++)
         {
             byte lowBits = 0;
             byte highBits = 0;
-            
+
             for (int x = 0; x < 8; x++)
             {
                 // Checkerboard: use color 3 if (x+y) is odd, color 0 if even
@@ -88,18 +88,21 @@ public sealed class Emulator
                 }
                 // For color 0, both bits remain 0 (already initialized)
             }
-            
+
             // Write the row data to VRAM
             ushort tileAddr = (ushort)(0x8000 + (y * 2));
             _mmu.WriteByte(tileAddr, lowBits);       // Low bit plane
             _mmu.WriteByte((ushort)(tileAddr + 1), highBits); // High bit plane
         }
-        
+
         // Fill background tile map with tile 0 (creates a checkerboard screen)
         for (int i = 0; i < 32 * 32; i++)
         {
             _mmu.WriteByte((ushort)(0x9800 + i), 0); // Tile map pointing to tile 0
         }
+
+        // Force the PPU to render the frame immediately
+        RenderVramTestFrame();
     }
 
     /// <summary>
@@ -109,14 +112,14 @@ public sealed class Emulator
     public void CreateDirectTestPattern()
     {
         var frameBuffer = _ppu.FrameBuffer;
-        
+
         // Create a simple pattern directly in the frame buffer
         for (int y = 0; y < Ppu.ScreenHeight; y++)
         {
             for (int x = 0; x < Ppu.ScreenWidth; x++)
             {
                 int index = y * Ppu.ScreenWidth + x;
-                
+
                 // Create a simple pattern
                 if ((x / 20 + y / 20) % 2 == 0)
                 {
@@ -128,6 +131,17 @@ public sealed class Emulator
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Forces the PPU to render the entire frame from VRAM data.
+    /// Used for testing VRAM patterns without running the full emulation loop.
+    /// </summary>
+    private void RenderVramTestFrame()
+    {
+        // Reset PPU state and force a complete frame render
+        _ppu.Reset();
+        _ppu.ForceRenderFrame();
     }
 
     /// <summary>
@@ -169,7 +183,7 @@ public sealed class Emulator
     {
         bool frameCompleted = false;
         int cyclesRun = 0;
-        
+
         while (_cycleAccumulator < CyclesPerFrame && cyclesRun < targetCycles)
         {
             int cycles = _cpu.Step();
@@ -190,7 +204,7 @@ public sealed class Emulator
             _cycleAccumulator -= CyclesPerFrame;
             frameCompleted = true;
         }
-        
+
         return frameCompleted;
     }
 }
