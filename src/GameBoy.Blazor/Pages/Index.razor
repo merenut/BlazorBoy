@@ -49,7 +49,12 @@
         if (delta > 0)
             _lastFps = 1000.0 / delta;
 
-        bool frameReady = Emulator.StepFrame();
+        // Run emulator with limited cycles per frame to maintain 60 FPS
+        // Game Boy runs at ~59.7 FPS, so we target about 70224 cycles per 16.7ms
+        // But we'll spread this across animation frames for better performance
+        const int cyclesPerAnimationFrame = 8000; // Reduced from full 70224
+        bool frameReady = Emulator.StepFrame(cyclesPerAnimationFrame);
+        
         if (frameReady)
         {
             await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
