@@ -9,6 +9,12 @@
     <div class="col-auto">
         <InputFile OnChange="OnRomSelected" />
     </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" @onclick="CreateTestPattern">Test VRAM</button>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-secondary" @onclick="CreateDirectTestPattern">Test Direct</button>
+    </div>
     <div class="col-auto align-self-center">
         <span>FPS: @(_lastFps.ToString("0.0"))</span>
     </div>
@@ -91,5 +97,15 @@
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
         Emulator.LoadRom(ms.ToArray());
+    }
+
+    private void CreateTestPattern()
+    {
+        Emulator.CreateTestPattern();
+    }
+
+    private void CreateDirectTestPattern()
+    {
+        Emulator.CreateDirectTestPattern();
     }
 }

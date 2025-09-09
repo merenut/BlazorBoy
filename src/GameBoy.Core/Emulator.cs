@@ -60,6 +60,77 @@ public sealed class Emulator
     public void LoadRom(byte[] rom) => _mmu.LoadRom(rom);
 
     /// <summary>
+    /// Creates a test pattern in VRAM to verify rendering pipeline.
+    /// This method is for debugging purposes only.
+    /// </summary>
+    public void CreateTestPattern()
+    {
+        // Create a simple checkerboard pattern in tile 0
+        // Tile 0 starts at VRAM address 0x8000
+        
+        // Each tile is 8x8 pixels, 2 bits per pixel, 16 bytes total
+        // Each row is 2 bytes (low bits + high bits)
+        
+        // Create a checkerboard pattern (alternating colors 0 and 3)
+        for (int y = 0; y < 8; y++)
+        {
+            byte lowBits = 0;
+            byte highBits = 0;
+            
+            for (int x = 0; x < 8; x++)
+            {
+                // Checkerboard: use color 3 if (x+y) is odd, color 0 if even
+                bool useColor3 = ((x + y) % 2) == 1;
+                if (useColor3)
+                {
+                    lowBits |= (byte)(1 << (7 - x));  // Set low bit
+                    highBits |= (byte)(1 << (7 - x)); // Set high bit (color 3 = 11 binary)
+                }
+                // For color 0, both bits remain 0 (already initialized)
+            }
+            
+            // Write the row data to VRAM
+            ushort tileAddr = (ushort)(0x8000 + (y * 2));
+            _mmu.WriteByte(tileAddr, lowBits);       // Low bit plane
+            _mmu.WriteByte((ushort)(tileAddr + 1), highBits); // High bit plane
+        }
+        
+        // Fill background tile map with tile 0 (creates a checkerboard screen)
+        for (int i = 0; i < 32 * 32; i++)
+        {
+            _mmu.WriteByte((ushort)(0x9800 + i), 0); // Tile map pointing to tile 0
+        }
+    }
+
+    /// <summary>
+    /// Creates a direct test pattern in the frame buffer to test canvas rendering.
+    /// This bypasses the PPU and directly modifies the frame buffer.
+    /// </summary>
+    public void CreateDirectTestPattern()
+    {
+        var frameBuffer = _ppu.FrameBuffer;
+        
+        // Create a simple pattern directly in the frame buffer
+        for (int y = 0; y < Ppu.ScreenHeight; y++)
+        {
+            for (int x = 0; x < Ppu.ScreenWidth; x++)
+            {
+                int index = y * Ppu.ScreenWidth + x;
+                
+                // Create a simple pattern
+                if ((x / 20 + y / 20) % 2 == 0)
+                {
+                    frameBuffer[index] = Palette.ToRgba(0); // Light green
+                }
+                else
+                {
+                    frameBuffer[index] = Palette.ToRgba(3); // Dark green
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets the battery-backed external RAM data for saving.
     /// </summary>
     /// <returns>The external RAM data, or null if no battery-backed RAM exists or no data to save.</returns>
