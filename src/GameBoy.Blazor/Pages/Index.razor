@@ -98,9 +98,11 @@
         Emulator.LoadRom(ms.ToArray());
     }
 
-    private void CreateTestPattern()
+    private async Task CreateTestPattern()
     {
         Emulator.CreateTestPattern();
+        // Immediately update the canvas to show the test pattern
+        await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
     }
 
     private void CreateDirectTestPattern()

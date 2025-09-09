@@ -65,6 +65,10 @@ public sealed class Emulator
     /// </summary>
     public void CreateTestPattern()
     {
+        // Ensure LCD and background are enabled for rendering
+        _mmu.WriteByte(IoRegs.LCDC, 0x91); // LCD enable + BG enable + 8x8 sprites + BG tile map at 0x9800 + BG tile data at 0x8000
+        _mmu.WriteByte(IoRegs.BGP, 0xE4);  // Background palette: 11,10,01,00 (dark to light)
+        
         // Create a simple checkerboard pattern in tile 0
         // Tile 0 starts at VRAM address 0x8000
 
@@ -139,8 +143,8 @@ public sealed class Emulator
     /// </summary>
     private void RenderVramTestFrame()
     {
-        // Reset PPU state and force a complete frame render
-        _ppu.Reset();
+        // Don't reset PPU state - we want to keep the registers we just configured
+        // Just force a complete frame render
         _ppu.ForceRenderFrame();
     }
 
