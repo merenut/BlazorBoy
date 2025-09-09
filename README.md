@@ -18,7 +18,7 @@ Status: Phase 1 partially implemented (MMU map + post-BIOS defaults + frame loop
    3.6 PPU Pipeline  
    3.7 DMA  
    3.8 Joypad  
-   3.9 Serial (Stub)  
+   3.9 Serial Communication Port  
    3.10 APU (Audio)  
    3.11 Persistence (Battery / Save States)  
    3.12 Debug Tooling  
@@ -86,7 +86,7 @@ For complete documentation including API reference, register semantics, edge cas
 6. PPU (Modes, BG, Window, Sprites)  
 7. DMA (OAM DMA)  
 8. Joypad Matrix  
-9. Serial Stub  
+9. Serial Communication Port  
 10. APU (Channels 1–4)  
 11. Persistence (Battery RAM, Save States)  
 12. Debugging / Introspection  
@@ -338,17 +338,46 @@ Testing:
 - Mooneye joypad_interrupt
 - Manual: key mapping in Blazor
 
-### 3.9 Phase 9: Serial (Stub)
+### 3.9 Phase 9: Serial Communication Port
 Files:
-- SerialPort.cs
+- SerialPort.cs (new)
+- Integrate with Mmu.cs for I/O register mapping
 
 Key Methods:
-- Map SB (FF01), SC (FF02)
-- On start bit set, schedule completion; request Serial interrupt
+- Map SB (Serial transfer data - 0xFF01) and SC (Serial transfer control - 0xFF02)
+- SC bit 7 (transfer start): triggers serial transfer when set
+- SC bit 1 (clock speed): internal clock select (Game Boy Color feature, stub for DMG)
+- SC bit 0 (shift clock): internal vs external clock source
+- SerialPort.Step(cycles): process transfer timing
+- SerialPort.ReadRegister(address) / WriteRegister(address, value)
+- Transfer completion: clear SC bit 7, request Serial interrupt
 
-Testing:
-- Unit: writing start triggers interrupt
-- Minimal – many ROMs ignore
+Hardware Behavior:
+- SB register: 8-bit data for serial transfer (read/write)
+- SC register: transfer control and status
+  - Bit 7: Transfer start flag (1=transfer in progress, 0=no transfer/complete)
+  - Bit 1: Clock speed (DMG: unused, always 0)
+  - Bit 0: Clock source (1=internal clock, 0=external clock)
+  - Bits 2-6: Unused, read as 1 on DMG
+- Transfer timing: ~8192 Hz when using internal clock (~512 cycles per bit, 4096 cycles total)
+- Completion: automatically clears transfer start bit and triggers interrupt if enabled
+
+Dependencies:
+- MMU for register I/O mapping (0xFF01-0xFF02)
+- InterruptController for Serial interrupt triggering
+- Emulator cycle timing integration
+
+Testing Strategy:
+- Unit tests: register read/write behavior, transfer start triggers
+- Integration: serial interrupt generation and timing
+- Edge cases: external clock mode (stub behavior)
+- Compatibility: most ROMs ignore serial, but some use for debugging/multiplayer
+
+Implementation Notes:
+- This is primarily a stub implementation for compatibility
+- External clock transfers should be handled gracefully (no actual external device)
+- Focus on interrupt generation and register semantics rather than actual data transfer
+- Serial link cable functionality is not required for single-player games
 
 ### 3.10 Phase 10: APU (Audio)
 Files:
