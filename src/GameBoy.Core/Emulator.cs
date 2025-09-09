@@ -40,6 +40,7 @@ public sealed class Emulator
         // Connect timer and PPU to MMU for I/O register coordination
         _mmu.Timer = _timer;
         _mmu.Ppu = _ppu;
+        _mmu.Joypad = Joypad;
         _ppu.Mmu = _mmu;
     }
 
