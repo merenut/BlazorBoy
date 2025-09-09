@@ -40,6 +40,166 @@ public class MmuTests
     }
 
     [Fact]
+    public void JOYP_WithoutJoypad_ReturnsDefaultBehavior()
+    {
+        var mmu = new Mmu();
+        // No joypad connected - should return 0xCF (all buttons unpressed)
+        var val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xCF, val);
+
+        // Write row selection bits and verify they are preserved
+        mmu.WriteByte(Mmu.JOYP, 0x10); // Select directions
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xDF, val); // 0xCF with bit 4 set
+
+        mmu.WriteByte(Mmu.JOYP, 0x20); // Select actions
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xEF, val); // 0xCF with bit 5 set
+    }
+
+    [Fact]
+    public void JOYP_DirectionPadMatrix_WorksCorrectly()
+    {
+        var mmu = new Mmu();
+        var interruptController = new InterruptController();
+        var joypad = new Joypad(interruptController);
+        mmu.Joypad = joypad;
+
+        // Select direction pad (P14 = 0)
+        mmu.WriteByte(Mmu.JOYP, 0x20); // P15=1, P14=0
+
+        // No buttons pressed - should read as 0xEF (all bits 1)
+        var val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xEF, val);
+
+        // Press Right (bit 0)
+        joypad.Right = true;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xEE, val); // 0xEF with bit 0 cleared
+
+        // Press Left (bit 1) as well
+        joypad.Left = true;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xEC, val); // 0xEF with bits 0 and 1 cleared
+
+        // Press Up (bit 2) and Down (bit 3)
+        joypad.Up = true;
+        joypad.Down = true;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xE0, val); // 0xEF with bits 0-3 cleared
+
+        // Release all direction buttons
+        joypad.Right = false;
+        joypad.Left = false;
+        joypad.Up = false;
+        joypad.Down = false;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xEF, val); // Back to all unpressed
+    }
+
+    [Fact]
+    public void JOYP_ActionButtonMatrix_WorksCorrectly()
+    {
+        var mmu = new Mmu();
+        var interruptController = new InterruptController();
+        var joypad = new Joypad(interruptController);
+        mmu.Joypad = joypad;
+
+        // Select action buttons (P15 = 0)
+        mmu.WriteByte(Mmu.JOYP, 0x10); // P15=0, P14=1
+
+        // No buttons pressed - should read as 0xDF (all bits 1)
+        var val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xDF, val);
+
+        // Press A (bit 0)
+        joypad.A = true;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xDE, val); // 0xDF with bit 0 cleared
+
+        // Press B (bit 1) as well
+        joypad.B = true;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xDC, val); // 0xDF with bits 0 and 1 cleared
+
+        // Press Select (bit 2) and Start (bit 3)
+        joypad.Select = true;
+        joypad.Start = true;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xD0, val); // 0xDF with bits 0-3 cleared
+
+        // Release all action buttons
+        joypad.A = false;
+        joypad.B = false;
+        joypad.Select = false;
+        joypad.Start = false;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xDF, val); // Back to all unpressed
+    }
+
+    [Fact]
+    public void JOYP_BothRowsSelected_CombinesButtonState()
+    {
+        var mmu = new Mmu();
+        var interruptController = new InterruptController();
+        var joypad = new Joypad(interruptController);
+        mmu.Joypad = joypad;
+
+        // Select both rows (P14=0, P15=0)
+        mmu.WriteByte(Mmu.JOYP, 0x00);
+
+        // No buttons pressed
+        var val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xCF, val); // Both selection bits clear, all button bits set
+
+        // Press Right (direction) and A (action) - both map to bit 0
+        joypad.Right = true;
+        joypad.A = true;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xCE, val); // Bit 0 cleared
+
+        // Press Left (direction) and B (action) - both map to bit 1
+        joypad.Left = true;
+        joypad.B = true;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xCC, val); // Bits 0 and 1 cleared
+
+        // Press Up/Select (bit 2) and Down/Start (bit 3)
+        joypad.Up = true;
+        joypad.Select = true;
+        joypad.Down = true;
+        joypad.Start = true;
+        val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xC0, val); // All button bits cleared
+    }
+
+    [Fact]
+    public void JOYP_NoRowsSelected_AllButtonBitsSet()
+    {
+        var mmu = new Mmu();
+        var interruptController = new InterruptController();
+        var joypad = new Joypad(interruptController);
+        mmu.Joypad = joypad;
+
+        // Select no rows (P14=1, P15=1)
+        mmu.WriteByte(Mmu.JOYP, 0x30);
+
+        // Press all buttons
+        joypad.Right = true;
+        joypad.Left = true;
+        joypad.Up = true;
+        joypad.Down = true;
+        joypad.A = true;
+        joypad.B = true;
+        joypad.Select = true;
+        joypad.Start = true;
+
+        // Should still read all button bits as 1 (no rows selected)
+        var val = mmu.ReadByte(Mmu.JOYP);
+        Assert.Equal(0xFF, val); // All bits set
+    }
+
+    [Fact]
     public void DIV_ReadsDefaultValue()
     {
         var mmu = new Mmu();

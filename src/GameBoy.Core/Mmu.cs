@@ -91,6 +91,11 @@ public sealed class Mmu
     public Ppu? Ppu { get; set; }
 
     /// <summary>
+    /// The joypad unit that manages button input state for the JOYP register.
+    /// </summary>
+    public Joypad? Joypad { get; set; }
+
+    /// <summary>
     /// Gets whether a DMA transfer is currently in progress.
     /// </summary>
     public bool IsDmaActive => _dmaActive;
@@ -375,7 +380,7 @@ public sealed class Mmu
     {
         return addr switch
         {
-            JOYP => (byte)(_joyp | 0x0F), // Lower 4 bits always read as 1s
+            JOYP => ReadJoypadRegister(),
             DIV => Timer?.DIV ?? 0x00,
             TIMA => Timer?.TIMA ?? 0x00,
             TMA => Timer?.TMA ?? 0x00,
@@ -466,5 +471,50 @@ public sealed class Mmu
                 break;
                 // All other I/O register writes are ignored
         }
+    }
+
+    /// <summary>
+    /// Reads the JOYP register (0xFF00) implementing the Game Boy joypad matrix.
+    /// Bits 4-5 are row selection (P14/P15), bits 0-3 are button state.
+    /// </summary>
+    private byte ReadJoypadRegister()
+    {
+        // Start with current JOYP value (bits 4-5 are the row selection)
+        byte result = _joyp;
+
+        // If no joypad is connected, return with lower 4 bits as 1s (no buttons pressed)
+        if (Joypad == null)
+        {
+            return (byte)((result & 0x30) | 0xCF); // Preserve row selection bits 4-5, set others to 1
+        }
+
+        // P14 (bit 4) = 0: Select direction pad row
+        // P15 (bit 5) = 0: Select action button row
+        bool selectDirections = (_joyp & 0x10) == 0;
+        bool selectActions = (_joyp & 0x20) == 0;
+
+        // Start with all buttons unpressed (1s)
+        byte buttonBits = 0x0F;
+
+        if (selectDirections)
+        {
+            // Direction pad: Right=0, Left=1, Up=2, Down=3
+            if (Joypad.Right) buttonBits &= 0xFE; // Clear bit 0
+            if (Joypad.Left) buttonBits &= 0xFD;  // Clear bit 1  
+            if (Joypad.Up) buttonBits &= 0xFB;    // Clear bit 2
+            if (Joypad.Down) buttonBits &= 0xF7;  // Clear bit 3
+        }
+
+        if (selectActions)
+        {
+            // Action buttons: A=0, B=1, Select=2, Start=3
+            if (Joypad.A) buttonBits &= 0xFE;      // Clear bit 0
+            if (Joypad.B) buttonBits &= 0xFD;      // Clear bit 1
+            if (Joypad.Select) buttonBits &= 0xFB; // Clear bit 2
+            if (Joypad.Start) buttonBits &= 0xF7;  // Clear bit 3
+        }
+
+        // Combine row selection bits (4-5) with button state (0-3) and upper bits (6-7) as 1s
+        return (byte)((result & 0x30) | buttonBits | 0xC0);
     }
 }
