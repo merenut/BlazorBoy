@@ -264,11 +264,11 @@ public class InterruptIntegrationTests
 
         // Execute HALT instruction
         int cycles = emulator.Cpu.Step();
-        
+
         // Debug info
         byte rawIF = (byte)(emulator.Mmu.InterruptController.IF & 0x1F);
         bool hasInterrupts = emulator.Mmu.InterruptController.TryGetPending(out var _);
-        
+
         Assert.True(emulator.Cpu.IsHalted, $"CPU should be halted after HALT instruction. " +
             $"IF=0x{emulator.Mmu.InterruptController.IF:X2}, IE=0x{emulator.Mmu.InterruptController.IE:X2}, " +
             $"rawIF=0x{rawIF:X2}, hasInterrupts={hasInterrupts}, IME={emulator.Cpu.InterruptsEnabled}");
@@ -293,11 +293,11 @@ public class InterruptIntegrationTests
 
         // Execute just the CPU step, not the full frame
         int cycles = emulator.Cpu.Step();
-        
+
         // Debug info
         byte rawIF = (byte)(emulator.Mmu.InterruptController.IF & 0x1F); // Remove upper bits
         bool hasInterrupts = emulator.Mmu.InterruptController.TryGetPending(out var _);
-        
+
         Assert.True(emulator.Cpu.IsHalted, $"CPU should be halted after HALT instruction. " +
             $"IF=0x{emulator.Mmu.InterruptController.IF:X2}, IE=0x{emulator.Mmu.InterruptController.IE:X2}, " +
             $"rawIF=0x{rawIF:X2}, hasInterrupts={hasInterrupts}, IME={emulator.Cpu.InterruptsEnabled}");
