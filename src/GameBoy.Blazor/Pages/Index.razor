@@ -86,5 +86,6 @@
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
         Emulator.LoadRom(ms.ToArray());
+        Emulator.Reset();
     }
 }
