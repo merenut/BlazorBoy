@@ -119,9 +119,9 @@ public sealed class Cpu
         // If halted and no interrupt to process, stay halted (HALT bug handling)
         if (IsHalted)
         {
-            // Check for any interrupt flags that would wake up from HALT
-            // HALT wakes on any IF flag, regardless of whether that interrupt is enabled in IE
-            if (_mmu.InterruptController.HasAnyInterruptFlags())
+            // Check for pending interrupts that would wake up from HALT
+            // HALT wakes up only when an interrupt is both requested (IF) AND enabled (IE)
+            if (_mmu.InterruptController.TryGetPending(out _))
             {
                 IsHalted = false; // Wake up from HALT
                 return 4; // Wake up takes 4 cycles, but don't execute next instruction yet
@@ -573,9 +573,9 @@ public sealed class Cpu
     {
         IsHalted = halted;
 
-        // Implement HALT bug when IME=0 and any IF flag is set
+        // Implement HALT bug when IME=0 and there's a pending interrupt (IF & IE != 0)
         // The bug causes the instruction after HALT to be executed twice
-        if (halted && !InterruptsEnabled && _mmu.InterruptController.HasAnyInterruptFlags())
+        if (halted && !InterruptsEnabled && _mmu.InterruptController.TryGetPending(out _))
         {
             // HALT bug: CPU doesn't actually halt, and the next instruction executes twice
             IsHalted = false;
