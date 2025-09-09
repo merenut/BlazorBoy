@@ -174,6 +174,12 @@ public sealed class Ppu
                         _scanlineCycles = 0;
                         _ly++;
 
+                        // Write LY back to MMU so ROMs can read current scanline
+                        if (Mmu != null)
+                        {
+                            Mmu.SetLY(_ly);
+                        }
+
                         if (_ly >= ScreenHeight)
                         {
                             // Enter VBlank
@@ -198,12 +204,24 @@ public sealed class Ppu
                         _scanlineCycles = 0;
                         _ly++;
 
+                        // Write LY back to MMU so ROMs can read current scanline
+                        if (Mmu != null)
+                        {
+                            Mmu.SetLY(_ly);
+                        }
+
                         if (_ly >= TotalScanlines)
                         {
                             // Frame complete - restart at scanline 0
                             _ly = 0;
                             _mode = LcdMode.OamScan;
                             frameCompleted = true;
+
+                            // Write LY reset back to MMU
+                            if (Mmu != null)
+                            {
+                                Mmu.SetLY(_ly);
+                            }
                         }
 
                         UpdateStatRegister();
@@ -522,6 +540,12 @@ public sealed class Ppu
         else
         {
             _stat &= 0xFB;
+        }
+
+        // Write STAT back to MMU so ROMs can read current status
+        if (Mmu != null)
+        {
+            Mmu.SetSTAT(_stat);
         }
     }
 

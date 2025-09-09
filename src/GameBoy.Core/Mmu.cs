@@ -517,4 +517,25 @@ public sealed class Mmu
         // Combine row selection bits (4-5) with button state (0-3) and upper bits (6-7) as 1s
         return (byte)((result & 0x30) | buttonBits | 0xC0);
     }
+
+    /// <summary>
+    /// Sets the LY register value from PPU. Used for PPU->MMU synchronization.
+    /// </summary>
+    /// <param name="value">The current scanline value</param>
+    public void SetLY(byte value)
+    {
+        _ly = value;
+    }
+
+    /// <summary>
+    /// Sets the STAT register value from PPU. Used for PPU->MMU synchronization.
+    /// Preserves user-writable bits (interrupt enables) while updating PPU-controlled bits.
+    /// </summary>
+    /// <param name="value">The STAT value from PPU</param>
+    public void SetSTAT(byte value)
+    {
+        // Preserve bits 6,5,4,3 (interrupt enables) that can be set by ROM writes
+        // Update bits 2,1,0 (LY=LYC flag and LCD mode) from PPU
+        _stat = (byte)((_stat & 0x78) | (value & 0x87));
+    }
 }
