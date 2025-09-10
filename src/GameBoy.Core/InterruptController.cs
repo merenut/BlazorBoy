@@ -121,6 +121,16 @@ public sealed class InterruptController
     }
 
     /// <summary>
+    /// Checks if any interrupts are pending (both IF and IE bits set).
+    /// Used for HALT wake-up logic - HALT wakes when there's a pending interrupt.
+    /// </summary>
+    /// <returns>True if any pending interrupts exist, false otherwise.</returns>
+    public bool HasAnyPendingInterrupts()
+    {
+        return (_if & _ie & 0x1F) != 0; // Check for any pending interrupts
+    }
+
+    /// <summary>
     /// Services an interrupt by clearing its IF bit and returning the interrupt vector address.
     /// Note: Actual CPU state manipulation (pushing PC, setting PC to vector) should be done by the CPU.
     /// </summary>
