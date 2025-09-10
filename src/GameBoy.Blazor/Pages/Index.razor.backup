@@ -1,0 +1,379 @@
+@page "/"
+@using GameBoy.Core
+@using GameBoy.Core.Persistence
+@using GameBoy.Blazor.Services
+@inject Emulator Emulator
+@inject IPersistenceService PersistenceService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<h1>Game Boy (Blazor)</h1>
+
+<div class="row g-3">
+    <div class="col-auto">
+        <InputFile OnChange="OnRomSelected" />
+    </div>
+    <div class="col-auto align-self-center">
+        <span>FPS: @(_lastFps.ToString("0.0"))</span>
+    </div>
+    <div class="col-auto align-self-center">
+        <button class="btn btn-sm @(_audioEnabled ? "btn-success" : "btn-outline-secondary")" @onclick="ToggleAudio">
+            @(_audioEnabled ? "🔊 Audio On" : "🔇 Audio Off")
+        </button>
+    </div>
+    <div class="col-auto align-self-center">
+        <label class="form-label mb-0 me-2">Volume:</label>
+        <input type="range" class="form-range" style="width: 100px;" min="0" max="100" 
+               value="@((int)(_audioVolume * 100))" @oninput="OnVolumeChanged" />
+        <small class="text-muted">@((int)(_audioVolume * 100))%</small>
+    </div>
+    <div class="col-auto">
+        <small class="text-muted">Debug:</small>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="CreateTestPattern">Test VRAM</button>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="CreateDirectTestPattern">Test Direct</button>
+        <button class="btn btn-sm btn-outline-info" @onclick="ShowDebugInfo">Debug Info</button>
+    </div>
+</div>
+
+@if (_showDebugInfo)
+{
+    <div class="mt-3">
+        <pre style="font-size: 0.8em; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">@_debugInfo</pre>
+    </div>
+}
+
+<div class="row mt-3">
+    <div class="col-auto">
+        <small class="text-muted">Save States:</small>
+        <button class="btn btn-sm btn-success" @onclick="SaveState" disabled="@(_currentRomKey == null)">
+            💾 Save State
+        </button>
+        <button class="btn btn-sm btn-primary" @onclick="LoadState" disabled="@(_currentRomKey == null)">
+            📁 Load State
+        </button>
+        @if (_saveStateMessage != null)
+        {
+            <small class="ms-2 @(_saveStateSuccess ? "text-success" : "text-danger")">@_saveStateMessage</small>
+        }
+    </div>
+</div>
+
+<div tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
+    <canvas id="screen" width="160" height="144" style="image-rendering: pixelated; width: 320px; height: 288px; border:1px solid #ccc"></canvas>
+    <p class="text-muted">Click here and use arrows, Z, X, Enter, Shift.</p>
+    </div>
+
+@code {
+    private DotNetObjectReference<Index>? _dotNetRef;
+    private double _lastFps;
+    private long _lastTs;
+    private ElementReference _focusable;
+    private bool _isInTestMode = false;
+    private bool _showDebugInfo = false;
+    private string _debugInfo = "";
+    private bool _audioEnabled = false;
+    private double _audioVolume = 0.5;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            
+            // Draw initial frame to ensure canvas shows default background color
+            await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+            
+            await JS.InvokeVoidAsync("gbInterop.startRenderLoop", _dotNetRef);
+            await _focusable.FocusAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async Task<bool> OnAnimationFrame(double timestamp)
+    {
+        if (_lastTs == 0)
+            _lastTs = (long)timestamp;
+        var delta = timestamp - _lastTs;
+        _lastTs = (long)timestamp;
+        if (delta > 0)
+            _lastFps = 1000.0 / delta;
+
+        // Skip emulation if we're in test mode
+        if (!_isInTestMode)
+        {
+            // Run emulator with balanced cycles per frame to maintain good performance
+            // while allowing ROM to execute properly
+            const int cyclesPerAnimationFrame = 17500; // Quarter of full 70224 for balanced performance
+            bool frameReady = Emulator.StepFrame(cyclesPerAnimationFrame);
+            
+            if (frameReady)
+            {
+                await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+            }
+
+            // Update audio if enabled
+            if (_audioEnabled)
+            {
+                await UpdateAudioBuffer();
+            }
+        }
+        
+        StateHasChanged();
+        return true; // continue loop
+    }
+
+    private async Task UpdateAudioBuffer()
+    {
+        try
+        {
+            var samples = Emulator.Apu.PullSamples();
+            if (samples.Length > 0)
+            {
+                await JS.InvokeVoidAsync("gbInterop.updateAudioBuffer", samples);
+            }
+        }
+        catch (JSException)
+        {
+            // Audio might not be initialized yet - this is normal
+        }
+    }
+
+    
+
+    private void OnKeyDown(KeyboardEventArgs e) => UpdateJoypad(e, true);
+    private void OnKeyUp(KeyboardEventArgs e) => UpdateJoypad(e, false);
+
+    private void OnCanvasClick()
+    {
+        _isInTestMode = false; // Resume emulation when user clicks canvas
+    }
+
+    private void UpdateJoypad(KeyboardEventArgs e, bool down)
+    {
+        switch (e.Key)
+        {
+            case "ArrowRight": Emulator.Joypad.Right = down; break;
+            case "ArrowLeft": Emulator.Joypad.Left = down; break;
+            case "ArrowUp": Emulator.Joypad.Up = down; break;
+            case "ArrowDown": Emulator.Joypad.Down = down; break;
+            case "z": case "Z": Emulator.Joypad.A = down; break;
+            case "x": case "X": Emulator.Joypad.B = down; break;
+            case "Enter": Emulator.Joypad.Start = down; break;
+            case "Shift": Emulator.Joypad.Select = down; break;
+        }
+    }
+
+    private string? _currentRomKey;
+    private string? _saveStateMessage;
+    private bool _saveStateSuccess;
+
+    private async Task OnRomSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+        
+        using var stream = file.OpenReadStream(maxAllowedSize: 4 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        byte[] romData = ms.ToArray();
+        
+        // Save current battery RAM before loading new ROM
+        await SaveCurrentBatteryRam();
+        
+        // Generate ROM key for persistence
+        _currentRomKey = BatteryStore.GenerateRomKey(romData);
+        
+        // Load new ROM
+        Emulator.LoadRom(romData);
+        
+        // Load battery RAM for this ROM if it exists
+        await LoadBatteryRamForCurrentRom();
+        
+        _isInTestMode = false; // Resume emulation when ROM is loaded
+    }
+
+    private async Task SaveCurrentBatteryRam()
+    {
+        if (_currentRomKey != null && Emulator.HasBatteryRam)
+        {
+            try
+            {
+                byte[]? batteryData = Emulator.GetBatteryRam();
+                await PersistenceService.SaveBatteryRamAsync(_currentRomKey, batteryData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to save battery RAM: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task LoadBatteryRamForCurrentRom()
+    {
+        if (_currentRomKey != null && Emulator.HasBatteryRam)
+        {
+            try
+            {
+                byte[]? batteryData = await PersistenceService.LoadBatteryRamAsync(_currentRomKey);
+                if (batteryData != null)
+                {
+                    Emulator.LoadBatteryRam(batteryData);
+                    Console.WriteLine($"Loaded battery RAM for {_currentRomKey} ({batteryData.Length} bytes)");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to load battery RAM: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task SaveState()
+    {
+        if (_currentRomKey == null)
+        {
+            ShowSaveStateMessage("No ROM loaded", false);
+            return;
+        }
+
+        try
+        {
+            byte[] saveStateData = Emulator.SerializeSaveState();
+            string slotKey = $"{_currentRomKey}_quick";
+            
+            bool success = await PersistenceService.SaveSaveStateAsync(slotKey, saveStateData);
+            if (success)
+            {
+                ShowSaveStateMessage($"State saved ({saveStateData.Length} bytes)", true);
+            }
+            else
+            {
+                ShowSaveStateMessage("Failed to save state", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Save state error: {ex.Message}");
+            ShowSaveStateMessage($"Error: {ex.Message}", false);
+        }
+    }
+
+    private async Task LoadState()
+    {
+        if (_currentRomKey == null)
+        {
+            ShowSaveStateMessage("No ROM loaded", false);
+            return;
+        }
+
+        try
+        {
+            string slotKey = $"{_currentRomKey}_quick";
+            byte[]? saveStateData = await PersistenceService.LoadSaveStateAsync(slotKey);
+            
+            if (saveStateData == null)
+            {
+                ShowSaveStateMessage("No save state found", false);
+                return;
+            }
+
+            Emulator.DeserializeSaveState(saveStateData);
+            ShowSaveStateMessage($"State loaded ({saveStateData.Length} bytes)", true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Load state error: {ex.Message}");
+            ShowSaveStateMessage($"Error: {ex.Message}", false);
+        }
+    }
+
+    private void ShowSaveStateMessage(string message, bool success)
+    {
+        _saveStateMessage = message;
+        _saveStateSuccess = success;
+        StateHasChanged();
+
+        // Clear message after 3 seconds
+        _ = Task.Delay(3000).ContinueWith(t =>
+        {
+            if (_saveStateMessage == message) // Only clear if it's still the same message
+            {
+                _saveStateMessage = null;
+                InvokeAsync(StateHasChanged);
+            }
+        });
+    }
+
+    private async Task CreateTestPattern()
+    {
+        _isInTestMode = true; // Pause emulation
+        Emulator.CreateTestPattern();
+        // Immediately update the canvas to show the test pattern
+        await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+    }
+
+    private async Task CreateDirectTestPattern()
+    {
+        _isInTestMode = true; // Pause emulation
+        Emulator.CreateDirectTestPattern();
+        // Immediately update the canvas to show the test pattern
+        await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+    }
+
+    private void ShowDebugInfo()
+    {
+        _debugInfo = Emulator.GetDebugInfo();
+        _showDebugInfo = !_showDebugInfo;
+    }
+
+    private async Task ToggleAudio()
+    {
+        if (_audioEnabled)
+        {
+            _audioEnabled = false;
+            await JS.InvokeVoidAsync("gbInterop.disableAudio");
+        }
+        else
+        {
+            bool success = await JS.InvokeAsync<bool>("gbInterop.enableAudio");
+            if (success)
+            {
+                _audioEnabled = true;
+                await JS.InvokeVoidAsync("gbInterop.setAudioVolume", _audioVolume);
+            }
+        }
+    }
+
+    private async Task OnVolumeChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double volume))
+        {
+            _audioVolume = volume / 100.0;
+            if (_audioEnabled)
+            {
+                await JS.InvokeVoidAsync("gbInterop.setAudioVolume", _audioVolume);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+        
+        // Save battery RAM before disposing
+        if (_currentRomKey != null && Emulator.HasBatteryRam)
+        {
+            try
+            {
+                byte[]? batteryData = Emulator.GetBatteryRam();
+                // Note: This is sync because Dispose can't be async
+                // The data will be saved on next visit if this fails
+                _ = Task.Run(async () => await PersistenceService.SaveBatteryRamAsync(_currentRomKey, batteryData));
+            }
+            catch
+            {
+                // Ignore errors during dispose
+            }
+        }
+    }
+}
