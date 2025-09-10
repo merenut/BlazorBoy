@@ -228,10 +228,6 @@ h1:focus {
     .overlay-content {
         padding: 2rem;
     }
-};
-    z-index: 999;
-    transition: right 0.3s ease;
-    overflow-y: auto;
 }
 
 .settings-overlay.show {
