@@ -1,0 +1,150 @@
+@using GameBoy.Blazor.Services
+@inject ISettingsService SettingsService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="input-remapping">
+    <h6>Input Mapping</h6>
+    
+    <div class="mapping-grid">
+        @foreach (var button in _gameButtons)
+        {
+            <div class="mapping-item">
+                <label class="form-label small">@button:</label>
+                <button class="btn btn-sm btn-outline-secondary mapping-button @(button == _listeningFor ? "listening" : "")"
+                        @onclick="() => StartListening(button)"
+                        disabled="@(_listeningFor != null && _listeningFor != button)">
+                    @(_mappings.TryGetValue(button, out var key) ? FormatKey(key) : "Unbound")
+                </button>
+            </div>
+        }
+    </div>
+    
+    @if (_listeningFor != null)
+    {
+        <div class="listening-indicator mt-2">
+            <small class="text-primary">
+                <i class="fas fa-circle blink"></i>
+                Press a key for <strong>@_listeningFor</strong> (Escape to cancel)
+            </small>
+        </div>
+    }
+    
+    <div class="mt-2">
+        <button class="btn btn-sm btn-outline-warning" @onclick="ResetToDefaults">
+            🔄 Reset to Defaults
+        </button>
+    </div>
+</div>
+
+<style>
+    .input-remapping .mapping-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+        margin: 10px 0;
+    }
+    
+    .input-remapping .mapping-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .input-remapping .mapping-button {
+        font-family: 'Courier New', monospace;
+        font-size: 0.8em;
+        min-height: 32px;
+    }
+    
+    .input-remapping .mapping-button.listening {
+        background-color: #e3f2fd;
+        border-color: #007bff;
+    }
+    
+    .input-remapping .listening-indicator .blink {
+        animation: blink 1s infinite;
+    }
+    
+    @@keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0.3; }
+    }
+</style>
+
+@code {
+    [Parameter] public EventCallback<Dictionary<string, string>> OnMappingsChanged { get; set; }
+    
+    private readonly string[] _gameButtons = { "Up", "Down", "Left", "Right", "A", "B", "Start", "Select" };
+    private Dictionary<string, string> _mappings = new();
+    private string? _listeningFor;
+    private bool _isListening = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _mappings = await SettingsService.GetInputMappingsAsync();
+    }
+
+    private void StartListening(string button)
+    {
+        if (_isListening && _listeningFor == button)
+        {
+            // Stop listening if clicking the same button
+            StopListening();
+            return;
+        }
+        
+        _listeningFor = button;
+        _isListening = true;
+        StateHasChanged();
+    }
+
+    private void StopListening()
+    {
+        _listeningFor = null;
+        _isListening = false;
+        StateHasChanged();
+    }
+
+    private async Task ResetToDefaults()
+    {
+        var defaultMappings = new Dictionary<string, string>
+        {
+            { "Up", "ArrowUp" },
+            { "Down", "ArrowDown" },
+            { "Left", "ArrowLeft" },
+            { "Right", "ArrowRight" },
+            { "A", "z" },
+            { "B", "x" },
+            { "Start", "Enter" },
+            { "Select", "Shift" }
+        };
+        
+        _mappings = defaultMappings;
+        await SettingsService.SetInputMappingsAsync(_mappings);
+        await OnMappingsChanged.InvokeAsync(_mappings);
+        StateHasChanged();
+    }
+
+    private static string FormatKey(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return "Unbound";
+        
+        return key switch
+        {
+            "ArrowUp" => "↑",
+            "ArrowDown" => "↓",
+            "ArrowLeft" => "←",
+            "ArrowRight" => "→",
+            "Enter" => "⏎",
+            "Shift" => "⇧",
+            " " => "Space",
+            _ => key.Length == 1 ? key.ToUpper() : key
+        };
+    }
+    
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}

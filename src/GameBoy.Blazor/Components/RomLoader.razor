@@ -1,0 +1,152 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using GameBoy.Blazor.Services
+@inject ISettingsService SettingsService
+@inject IJSRuntime JS
+
+<div class="rom-loader">
+    @if (!string.IsNullOrEmpty(LastRomName))
+    {
+        <div class="mb-2">
+            <small class="text-muted">Last ROM: @LastRomName</small>
+        </div>
+    }
+    
+    <div class="file-drop-area @(_isDragOver ? "drag-over" : "")" 
+         @ondragover="OnDragOver" 
+         @ondragover:preventDefault="true"
+         @ondragleave="OnDragLeave"
+         @ondrop="OnDrop"
+         @ondrop:preventDefault="true">
+        
+        <div class="file-drop-content">
+            <i class="fas fa-upload mb-2"></i>
+            <div>
+                <strong>Drop ROM file here</strong><br />
+                <small class="text-muted">or</small>
+            </div>
+            <InputFile OnChange="OnFileSelected" accept=".gb,.gbc" class="d-none" @ref="_fileInput" />
+            <button type="button" class="btn btn-outline-primary btn-sm mt-2" @onclick="OpenFilePicker">
+                📁 Browse Files
+            </button>
+        </div>
+    </div>
+    
+    @if (!string.IsNullOrEmpty(_selectedFileName))
+    {
+        <div class="mt-2">
+            <strong>Selected:</strong> @_selectedFileName
+            @if (_selectedFileSize > 0)
+            {
+                <small class="text-muted">(@FormatFileSize(_selectedFileSize))</small>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .rom-loader .file-drop-area {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background-color: #f8f9fa;
+    }
+    
+    .rom-loader .file-drop-area:hover,
+    .rom-loader .file-drop-area.drag-over {
+        border-color: #007bff;
+        background-color: #e3f2fd;
+    }
+    
+    .rom-loader .file-drop-content i {
+        font-size: 2rem;
+        color: #6c757d;
+        display: block;
+    }
+</style>
+
+@code {
+    [Parameter] public EventCallback<(byte[] data, string fileName)> OnRomLoaded { get; set; }
+    
+    private bool _isDragOver = false;
+    private string? _selectedFileName;
+    private long _selectedFileSize;
+    private InputFile? _fileInput;
+    
+    public string? LastRomName { get; private set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        LastRomName = await SettingsService.GetLastRomNameAsync();
+    }
+
+    private void OnDragOver(DragEventArgs e)
+    {
+        _isDragOver = true;
+    }
+
+    private void OnDragLeave(DragEventArgs e)
+    {
+        _isDragOver = false;
+    }
+
+    private void OnDrop(DragEventArgs e)
+    {
+        _isDragOver = false;
+        // Note: Drag and drop file handling requires additional JS interop
+        // For now, we'll just rely on the file picker
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        if (e.File != null)
+        {
+            await ProcessFile(e.File);
+        }
+    }
+
+    private async Task ProcessFile(IBrowserFile file)
+    {
+        try
+        {
+            _selectedFileName = file.Name;
+            _selectedFileSize = file.Size;
+            
+            const int maxFileSize = 4 * 1024 * 1024; // 4MB max
+            using var stream = file.OpenReadStream(maxFileSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            byte[] romData = ms.ToArray();
+            
+            // Save ROM name to settings
+            await SettingsService.SetLastRomNameAsync(file.Name);
+            LastRomName = file.Name;
+            
+            // Notify parent component
+            await OnRomLoaded.InvokeAsync((romData, file.Name));
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading ROM: {ex.Message}");
+        }
+    }
+
+    private async Task OpenFilePicker()
+    {
+        if (_fileInput?.Element != null)
+        {
+            await JS.InvokeVoidAsync("eval", "document.querySelector('input[type=file]').click()");
+        }
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024:F1} KB";
+        return $"{bytes / (1024 * 1024):F1} MB";
+    }
+}

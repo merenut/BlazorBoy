@@ -1,0 +1,67 @@
+@implements IDisposable
+
+<div class="fps-counter">
+    <small class="text-muted">FPS:</small>
+    <span class="fps-value @GetFpsClass()">@CurrentFps.ToString("0.0")</span>
+</div>
+
+<style>
+    .fps-counter .fps-value {
+        font-weight: bold;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .fps-counter .fps-good {
+        color: #28a745;
+    }
+    
+    .fps-counter .fps-warning {
+        color: #ffc107;
+    }
+    
+    .fps-counter .fps-bad {
+        color: #dc3545;
+    }
+</style>
+
+@code {
+    [Parameter] public double CurrentFps { get; set; }
+    
+    private readonly List<double> _fpsHistory = new();
+    private const int MaxHistorySize = 60; // Track last 60 frames for rolling average
+    
+    public double AverageFps { get; private set; }
+    
+    protected override void OnParametersSet()
+    {
+        if (CurrentFps > 0)
+        {
+            UpdateFpsHistory(CurrentFps);
+        }
+    }
+    
+    private void UpdateFpsHistory(double fps)
+    {
+        _fpsHistory.Add(fps);
+        
+        if (_fpsHistory.Count > MaxHistorySize)
+        {
+            _fpsHistory.RemoveAt(0);
+        }
+        
+        // Calculate rolling average
+        AverageFps = _fpsHistory.Count > 0 ? _fpsHistory.Average() : 0;
+    }
+    
+    private string GetFpsClass()
+    {
+        if (CurrentFps >= 55) return "fps-good";
+        if (CurrentFps >= 45) return "fps-warning";
+        return "fps-bad";
+    }
+    
+    public void Dispose()
+    {
+        _fpsHistory.Clear();
+    }
+}

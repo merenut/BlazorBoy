@@ -1,0 +1,90 @@
+@using GameBoy.Blazor.Services
+@inject ISettingsService SettingsService
+
+<div class="emulator-controls d-flex align-items-center gap-2">
+    <button class="btn btn-sm @(_isRunning ? "btn-warning" : "btn-success")" 
+            @onclick="ToggleRunPause"
+            disabled="@(!_hasRom)">
+        @(_isRunning ? "⏸️ Pause" : "▶️ Run")
+    </button>
+    
+    <button class="btn btn-sm btn-outline-danger" 
+            @onclick="Reset"
+            disabled="@(!_hasRom)">
+        🔄 Reset
+    </button>
+    
+    <div class="d-flex align-items-center gap-1">
+        <label class="form-label mb-0 small">Speed:</label>
+        <select class="form-select form-select-sm speed-select" 
+                value="@_speedMultiplier" 
+                @onchange="OnSpeedChanged">
+            <option value="0.5">0.5×</option>
+            <option value="1.0">1×</option>
+            <option value="1.5">1.5×</option>
+            <option value="2.0">2×</option>
+            <option value="3.0">3×</option>
+        </select>
+    </div>
+</div>
+
+<style>
+    .emulator-controls .speed-select {
+        width: 70px;
+    }
+</style>
+
+@code {
+    [Parameter] public bool HasRom { get; set; }
+    [Parameter] public bool IsRunning { get; set; }
+    [Parameter] public EventCallback OnToggleRunPause { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+    [Parameter] public EventCallback<double> OnSpeedChangeCallback { get; set; }
+    
+    private bool _hasRom = false;
+    private bool _isRunning = false;
+    private double _speedMultiplier = 1.0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _speedMultiplier = await SettingsService.GetSpeedMultiplierAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        _hasRom = HasRom;
+        _isRunning = IsRunning;
+    }
+
+    private async Task ToggleRunPause()
+    {
+        if (!_hasRom) return;
+        
+        _isRunning = !_isRunning;
+        await OnToggleRunPause.InvokeAsync();
+    }
+
+    private async Task Reset()
+    {
+        if (!_hasRom) return;
+        
+        await OnReset.InvokeAsync();
+    }
+
+    private async Task OnSpeedChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double speed))
+        {
+            _speedMultiplier = speed;
+            await SettingsService.SetSpeedMultiplierAsync(speed);
+            await OnSpeedChangeCallback.InvokeAsync(speed);
+        }
+    }
+    
+    public async Task SetSpeedMultiplier(double speed)
+    {
+        _speedMultiplier = speed;
+        await SettingsService.SetSpeedMultiplierAsync(speed);
+        StateHasChanged();
+    }
+}
