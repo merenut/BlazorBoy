@@ -551,4 +551,101 @@ public sealed class Mmu
         // Update bits 2,1,0 (LY=LYC flag and LCD mode) from PPU
         _stat = (byte)((_stat & 0x78) | (value & 0x87));
     }
+
+    /// <summary>
+    /// Gets the ROM data for the current cartridge (for save state validation).
+    /// </summary>
+    /// <returns>ROM data or null if no cartridge loaded</returns>
+    public byte[]? GetRomData()
+    {
+        return Cartridge?.GetRomData();
+    }
+
+    /// <summary>
+    /// Gets a copy of Work RAM (0xC000-0xDFFF).
+    /// </summary>
+    /// <returns>Work RAM data</returns>
+    public byte[] GetWorkRam()
+    {
+        byte[] workRam = new byte[WorkRamEnd - WorkRamStart + 1];
+        Array.Copy(_mem, WorkRamStart, workRam, 0, workRam.Length);
+        return workRam;
+    }
+
+    /// <summary>
+    /// Loads Work RAM data (0xC000-0xDFFF).
+    /// </summary>
+    /// <param name="data">Work RAM data to load</param>
+    public void LoadWorkRam(byte[] data)
+    {
+        if (data == null || data.Length != (WorkRamEnd - WorkRamStart + 1))
+            return;
+        Array.Copy(data, 0, _mem, WorkRamStart, data.Length);
+    }
+
+    /// <summary>
+    /// Gets a copy of Video RAM (0x8000-0x9FFF).
+    /// </summary>
+    /// <returns>Video RAM data</returns>
+    public byte[] GetVideoRam()
+    {
+        byte[] videoRam = new byte[VramEnd - VramStart + 1];
+        Array.Copy(_mem, VramStart, videoRam, 0, videoRam.Length);
+        return videoRam;
+    }
+
+    /// <summary>
+    /// Loads Video RAM data (0x8000-0x9FFF).
+    /// </summary>
+    /// <param name="data">Video RAM data to load</param>
+    public void LoadVideoRam(byte[] data)
+    {
+        if (data == null || data.Length != (VramEnd - VramStart + 1))
+            return;
+        Array.Copy(data, 0, _mem, VramStart, data.Length);
+    }
+
+    /// <summary>
+    /// Gets a copy of OAM RAM (0xFE00-0xFE9F).
+    /// </summary>
+    /// <returns>OAM RAM data</returns>
+    public byte[] GetOamRam()
+    {
+        byte[] oamRam = new byte[OamEnd - OamStart + 1];
+        Array.Copy(_mem, OamStart, oamRam, 0, oamRam.Length);
+        return oamRam;
+    }
+
+    /// <summary>
+    /// Loads OAM RAM data (0xFE00-0xFE9F).
+    /// </summary>
+    /// <param name="data">OAM RAM data to load</param>
+    public void LoadOamRam(byte[] data)
+    {
+        if (data == null || data.Length != (OamEnd - OamStart + 1))
+            return;
+        Array.Copy(data, 0, _mem, OamStart, data.Length);
+    }
+
+    /// <summary>
+    /// Gets a copy of High RAM (0xFF80-0xFFFE).
+    /// </summary>
+    /// <returns>High RAM data</returns>
+    public byte[] GetHighRam()
+    {
+        byte[] highRam = new byte[HramEnd - HramStart + 1];
+        Array.Copy(_mem, HramStart, highRam, 0, highRam.Length);
+        return highRam;
+    }
+
+    /// <summary>
+    /// Loads High RAM data (0xFF80-0xFFFE).
+    /// </summary>
+    /// <param name="data">High RAM data to load</param>
+    public void LoadHighRam(byte[] data)
+    {
+        if (data == null || data.Length != (HramEnd - HramStart + 1))
+            return;
+        Array.Copy(data, 0, _mem, HramStart, data.Length);
+    }
 }

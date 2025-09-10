@@ -245,6 +245,220 @@ public sealed class Emulator
     public bool HasBatteryRam => _mmu.Cartridge is IBatteryBacked batteryCartridge && batteryCartridge.HasBattery;
 
     /// <summary>
+    /// Creates a save state containing the complete emulator state.
+    /// </summary>
+    /// <returns>A save state object with all emulator data</returns>
+    public Persistence.SaveState CreateSaveState()
+    {
+        if (_mmu.Cartridge == null)
+            throw new InvalidOperationException("No ROM loaded");
+
+        var saveState = new Persistence.SaveState();
+
+        // Get ROM data for validation
+        var romData = _mmu.GetRomData();
+        if (romData != null)
+        {
+            saveState.CartridgeTitle = _mmu.Cartridge.GetType().Name; // Simple title for now
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                saveState.CartridgeHash = sha256.ComputeHash(romData[..Math.Min(romData.Length, 32768)]);
+            }
+        }
+
+        // CPU State
+        saveState.Cpu = new Persistence.CpuState
+        {
+            PC = _cpu.Regs.PC,
+            SP = _cpu.Regs.SP,
+            AF = _cpu.Regs.AF,
+            BC = _cpu.Regs.BC,
+            DE = _cpu.Regs.DE,
+            HL = _cpu.Regs.HL,
+            InterruptsEnabled = _cpu.InterruptsEnabled,
+            IsHalted = _cpu.IsHalted
+        };
+
+        // Memory State
+        saveState.WorkRam = _mmu.GetWorkRam();
+        saveState.VideoRam = _mmu.GetVideoRam();
+        saveState.OamRam = _mmu.GetOamRam();
+        saveState.HighRam = _mmu.GetHighRam();
+
+        // External RAM (if present)
+        if (_mmu.Cartridge is IBatteryBacked batteryCartridge)
+        {
+            saveState.ExternalRam = batteryCartridge.GetExternalRam() ?? Array.Empty<byte>();
+        }
+
+        // Timer State
+        saveState.Timer = new Persistence.TimerState
+        {
+            DIV = _mmu.ReadByte(IoRegs.DIV),
+            TIMA = _mmu.ReadByte(IoRegs.TIMA),
+            TMA = _mmu.ReadByte(IoRegs.TMA),
+            TAC = _mmu.ReadByte(IoRegs.TAC)
+        };
+
+        // PPU State
+        saveState.Ppu = new Persistence.PpuState
+        {
+            LCDC = _mmu.ReadByte(IoRegs.LCDC),
+            STAT = _mmu.ReadByte(IoRegs.STAT),
+            SCY = _mmu.ReadByte(IoRegs.SCY),
+            SCX = _mmu.ReadByte(IoRegs.SCX),
+            LY = _mmu.ReadByte(IoRegs.LY),
+            LYC = _mmu.ReadByte(IoRegs.LYC),
+            WY = _mmu.ReadByte(IoRegs.WY),
+            WX = _mmu.ReadByte(IoRegs.WX),
+            BGP = _mmu.ReadByte(IoRegs.BGP),
+            OBP0 = _mmu.ReadByte(IoRegs.OBP0),
+            OBP1 = _mmu.ReadByte(IoRegs.OBP1)
+        };
+
+        // APU State
+        saveState.Apu = new Persistence.ApuState
+        {
+            NR10 = _mmu.ReadByte(0xFF10),
+            NR11 = _mmu.ReadByte(0xFF11),
+            NR12 = _mmu.ReadByte(0xFF12),
+            NR13 = _mmu.ReadByte(0xFF13),
+            NR14 = _mmu.ReadByte(0xFF14),
+            NR21 = _mmu.ReadByte(0xFF16),
+            NR22 = _mmu.ReadByte(0xFF17),
+            NR23 = _mmu.ReadByte(0xFF18),
+            NR24 = _mmu.ReadByte(0xFF19),
+            NR30 = _mmu.ReadByte(0xFF1A),
+            NR31 = _mmu.ReadByte(0xFF1B),
+            NR32 = _mmu.ReadByte(0xFF1C),
+            NR33 = _mmu.ReadByte(0xFF1D),
+            NR34 = _mmu.ReadByte(0xFF1E),
+            NR41 = _mmu.ReadByte(0xFF20),
+            NR42 = _mmu.ReadByte(0xFF21),
+            NR43 = _mmu.ReadByte(0xFF22),
+            NR44 = _mmu.ReadByte(0xFF23),
+            NR50 = _mmu.ReadByte(0xFF24),
+            NR51 = _mmu.ReadByte(0xFF25),
+            NR52 = _mmu.ReadByte(0xFF26)
+        };
+
+        // Wave pattern RAM
+        for (int i = 0; i < 16; i++)
+        {
+            saveState.Apu.WavePattern[i] = _mmu.ReadByte((ushort)(0xFF30 + i));
+        }
+
+        // Interrupt State
+        saveState.Interrupts = new Persistence.InterruptState
+        {
+            IE = _mmu.ReadByte(0xFFFF),
+            IF = _mmu.ReadByte(IoRegs.IF)
+        };
+
+        // Joypad State
+        saveState.Joypad = new Persistence.JoypadState
+        {
+            Up = Joypad.Up,
+            Down = Joypad.Down,
+            Left = Joypad.Left,
+            Right = Joypad.Right,
+            A = Joypad.A,
+            B = Joypad.B,
+            Start = Joypad.Start,
+            Select = Joypad.Select,
+            Register = _mmu.ReadByte(IoRegs.P1_JOYP)
+        };
+
+        // MBC State (basic for now)
+        saveState.Mbc = new Persistence.MbcState
+        {
+            MbcType = _mmu.Cartridge.GetType().Name
+        };
+
+        // I/O Registers
+        saveState.IoRegisters = new Dictionary<ushort, byte>();
+        for (ushort addr = 0xFF00; addr <= 0xFF7F; addr++)
+        {
+            saveState.IoRegisters[addr] = _mmu.ReadByte(addr);
+        }
+
+        return saveState;
+    }
+
+    /// <summary>
+    /// Loads a save state and restores the emulator to that exact state.
+    /// </summary>
+    /// <param name="saveState">The save state to load</param>
+    public void LoadSaveState(Persistence.SaveState saveState)
+    {
+        if (saveState == null)
+            throw new ArgumentNullException(nameof(saveState));
+
+        if (_mmu.Cartridge == null)
+            throw new InvalidOperationException("No ROM loaded");
+
+        // Validate compatibility
+        var romData = _mmu.GetRomData();
+        if (romData != null && !Persistence.SaveStateSerializer.ValidateCompatibility(saveState, romData))
+        {
+            throw new InvalidOperationException("Save state is not compatible with current ROM");
+        }
+
+        // Restore CPU State
+        _cpu.Regs.PC = saveState.Cpu.PC;
+        _cpu.Regs.SP = saveState.Cpu.SP;
+        _cpu.Regs.AF = saveState.Cpu.AF;
+        _cpu.Regs.BC = saveState.Cpu.BC;
+        _cpu.Regs.DE = saveState.Cpu.DE;
+        _cpu.Regs.HL = saveState.Cpu.HL;
+        _cpu.InterruptsEnabled = saveState.Cpu.InterruptsEnabled;
+        // Note: IsHalted is read-only, would need to add setter if needed
+
+        // Restore Memory State
+        _mmu.LoadWorkRam(saveState.WorkRam);
+        _mmu.LoadVideoRam(saveState.VideoRam);
+        _mmu.LoadOamRam(saveState.OamRam);
+        _mmu.LoadHighRam(saveState.HighRam);
+
+        // Restore External RAM
+        if (_mmu.Cartridge is IBatteryBacked batteryCartridge && saveState.ExternalRam.Length > 0)
+        {
+            batteryCartridge.LoadExternalRam(saveState.ExternalRam);
+        }
+
+        // Restore I/O Registers
+        foreach (var kvp in saveState.IoRegisters)
+        {
+            _mmu.WriteByte(kvp.Key, kvp.Value);
+        }
+
+        // Reset components to ensure consistent state
+        _ppu.Reset();
+        _timer.Reset();
+        _apu.Reset();
+    }
+
+    /// <summary>
+    /// Serializes the current emulator state to a compressed byte array.
+    /// </summary>
+    /// <returns>Serialized save state data</returns>
+    public byte[] SerializeSaveState()
+    {
+        var saveState = CreateSaveState();
+        return Persistence.SaveStateSerializer.Serialize(saveState);
+    }
+
+    /// <summary>
+    /// Deserializes and loads a save state from compressed byte array.
+    /// </summary>
+    /// <param name="data">Serialized save state data</param>
+    public void DeserializeSaveState(byte[] data)
+    {
+        var saveState = Persistence.SaveStateSerializer.Deserialize(data);
+        LoadSaveState(saveState);
+    }
+
+    /// <summary>
     /// Runs the emulator for a target number of cycles or until a frame is completed.
     /// </summary>
     /// <param name="targetCycles">Maximum cycles to run (default: run until frame complete)</param>
