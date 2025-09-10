@@ -4,13 +4,21 @@
 @using GameBoy.Blazor.Components
 @inject Emulator Emulator
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @implements IDisposable
 
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col">
-            <h2>Debug Tooling</h2>
-            <p class="text-muted">Professional-grade debugging interface for the BlazorBoy Game Boy emulator.</p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2>Debug Tooling</h2>
+                    <p class="text-muted">Professional-grade debugging interface for the BlazorBoy Game Boy emulator.</p>
+                </div>
+                <button class="btn btn-primary" @onclick="NavigateToHome">
+                    ← Back to Game
+                </button>
+            </div>
         </div>
     </div>
 
@@ -257,6 +265,11 @@
     {
         StatusMessage = "";
         StateHasChanged();
+    }
+
+    private void NavigateToHome()
+    {
+        Navigation.NavigateTo("/");
     }
 
     public void Dispose()

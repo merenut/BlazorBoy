@@ -7,6 +7,7 @@
 @inject IPersistenceService PersistenceService
 @inject ISettingsService SettingsService
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @implements IDisposable
 
 <!-- Header -->
@@ -98,6 +99,7 @@
                 <button class="btn-modern" @onclick="CreateTestPattern">Test VRAM</button>
                 <button class="btn-modern" @onclick="CreateDirectTestPattern">Test Direct</button>
                 <button class="btn-modern btn-info" @onclick="ShowDebugInfo">Debug Info</button>
+                <button class="btn-modern btn-primary" @onclick="NavigateToDebugPage">🔧 Debug Page</button>
             </div>
             
             @if (_showDebugInfo)
@@ -451,6 +453,11 @@
     {
         _debugInfo = Emulator.GetDebugInfo();
         _showDebugInfo = !_showDebugInfo;
+    }
+
+    private void NavigateToDebugPage()
+    {
+        Navigation.NavigateTo("/debug");
     }
 
     public void Dispose()
