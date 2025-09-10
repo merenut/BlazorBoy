@@ -150,7 +150,7 @@ public sealed class Cpu
         if (opcode == 0xCB)
         {
             byte cbOpcode = _mmu.ReadByte(Regs.PC++);
-            var instruction = OpcodeTable.CB[cbOpcode];
+            ref readonly var instruction = ref OpcodeTable.CB[cbOpcode];
             if (instruction.HasValue)
             {
                 cycles = instruction.Value.Execute(this);
@@ -164,7 +164,7 @@ public sealed class Cpu
         else
         {
             // Handle primary instruction table
-            var primaryInstruction = OpcodeTable.Primary[opcode];
+            ref readonly var primaryInstruction = ref OpcodeTable.Primary[opcode];
             if (primaryInstruction.HasValue)
             {
                 cycles = primaryInstruction.Value.Execute(this);

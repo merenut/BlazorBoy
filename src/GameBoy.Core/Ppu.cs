@@ -61,6 +61,30 @@ public sealed class Ppu
     public int[] FrameBuffer { get; } = new int[ScreenWidth * ScreenHeight];
 
     /// <summary>
+    /// Optimized frame buffer stored as RGBA bytes for efficient JavaScript interop.
+    /// Layout: [R0, G0, B0, A0, R1, G1, B1, A1, ...]. Length = 160*144*4.
+    /// </summary>
+    public byte[] FrameBufferRgba { get; } = new byte[ScreenWidth * ScreenHeight * 4];
+
+    /// <summary>
+    /// Writes a pixel to both frame buffers efficiently.
+    /// </summary>
+    /// <param name="bufferIndex">Index in the frame buffer (0 to ScreenWidth*ScreenHeight-1)</param>
+    /// <param name="argbColor">ARGB color value</param>
+    private void WritePixel(int bufferIndex, int argbColor)
+    {
+        // Write to ARGB frame buffer (backward compatibility)
+        FrameBuffer[bufferIndex] = argbColor;
+
+        // Write to RGBA byte buffer (optimized for JavaScript)
+        int rgbaIndex = bufferIndex * 4;
+        FrameBufferRgba[rgbaIndex] = (byte)((argbColor >> 16) & 0xFF);     // R
+        FrameBufferRgba[rgbaIndex + 1] = (byte)((argbColor >> 8) & 0xFF);  // G
+        FrameBufferRgba[rgbaIndex + 2] = (byte)(argbColor & 0xFF);         // B
+        FrameBufferRgba[rgbaIndex + 3] = (byte)((argbColor >> 24) & 0xFF); // A
+    }
+
+    /// <summary>
     /// Gets the current LCD mode.
     /// </summary>
     public LcdMode Mode => _mode;
@@ -117,6 +141,20 @@ public sealed class Ppu
         // Clear frame buffer with default background color (lightest green)
         int defaultColor = Palette.ToRgba(0); // Lightest green with full opacity
         Array.Fill(FrameBuffer, defaultColor);
+
+        // Clear RGBA buffer efficiently
+        byte r = (byte)((defaultColor >> 16) & 0xFF);
+        byte g = (byte)((defaultColor >> 8) & 0xFF);
+        byte b = (byte)(defaultColor & 0xFF);
+        byte a = (byte)((defaultColor >> 24) & 0xFF);
+
+        for (int i = 0; i < FrameBufferRgba.Length; i += 4)
+        {
+            FrameBufferRgba[i] = r;
+            FrameBufferRgba[i + 1] = g;
+            FrameBufferRgba[i + 2] = b;
+            FrameBufferRgba[i + 3] = a;
+        }
     }
 
     /// <summary>
@@ -305,7 +343,7 @@ public sealed class Ppu
 
             // Write to frame buffer
             int bufferIndex = scanline * ScreenWidth + x;
-            FrameBuffer[bufferIndex] = color;
+            WritePixel(bufferIndex, color);
         }
     }
 
@@ -340,7 +378,7 @@ public sealed class Ppu
 
             // Write to frame buffer
             int bufferIndex = scanline * ScreenWidth + x;
-            FrameBuffer[bufferIndex] = color;
+            WritePixel(bufferIndex, color);
         }
     }
 
@@ -417,7 +455,7 @@ public sealed class Ppu
             int bufferIndex = scanline * ScreenWidth + screenX;
             if (!sprite.BehindBackground || IsBackgroundColorZero(bufferIndex))
             {
-                FrameBuffer[bufferIndex] = color;
+                WritePixel(bufferIndex, color);
             }
         }
     }
@@ -490,7 +528,7 @@ public sealed class Ppu
         int startIndex = scanline * ScreenWidth;
         for (int i = 0; i < ScreenWidth; i++)
         {
-            FrameBuffer[startIndex + i] = color;
+            WritePixel(startIndex + i, color);
         }
     }
 

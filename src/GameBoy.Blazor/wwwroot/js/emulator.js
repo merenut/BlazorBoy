@@ -65,6 +65,26 @@ window.gbInterop = (function(){
     ctx.putImageData(frameBufferCache, 0, 0);
   }
 
+  function drawFrameRgba(canvasId, width, height, rgbaBuffer) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Create or reuse ImageData for performance
+    const pixelCount = width * height;
+    const bufferSize = pixelCount * 4; // RGBA
+    
+    if (!frameBufferCache || frameBufferSize !== bufferSize) {
+      frameBufferCache = ctx.createImageData(width, height);
+      frameBufferSize = bufferSize;
+    }
+    
+    // Direct copy from RGBA byte array - much faster than conversion
+    frameBufferCache.data.set(rgbaBuffer);
+    
+    ctx.putImageData(frameBufferCache, 0, 0);
+  }
+
   async function initAudio() {
     if (audioInitialized) return true;
     
@@ -145,6 +165,7 @@ window.gbInterop = (function(){
     stopRenderLoop,
     getCanvasContext,
     drawFrame,
+    drawFrameRgba,
     initAudio,
     enableAudio,
     disableAudio,
