@@ -25,39 +25,39 @@ public static class SaveStateSerializer
             throw new ArgumentNullException(nameof(saveState));
 
         using var outputStream = new MemoryStream();
-        
+
         // Write header
         outputStream.WriteByte(SAVE_STATE_MAGIC);
         outputStream.WriteByte(SAVE_STATE_VERSION);
-        
+
         // Serialize to JSON first (for compatibility and debugging)
         var jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = false,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
-        
+
         byte[] jsonBytes = JsonSerializer.SerializeToUtf8Bytes(saveState, jsonOptions);
-        
+
         // Write uncompressed size
         byte[] sizeBytes = BitConverter.GetBytes(jsonBytes.Length);
         outputStream.Write(sizeBytes, 0, sizeof(int));
-        
+
         // Compress the JSON data
         using (var deflateStream = new DeflateStream(outputStream, CompressionLevel.Optimal, leaveOpen: true))
         {
             deflateStream.Write(jsonBytes, 0, jsonBytes.Length);
         }
-        
+
         byte[] result = outputStream.ToArray();
-        
+
         // Add checksum at the end
         using (var sha256 = SHA256.Create())
         {
             byte[] hash = sha256.ComputeHash(result);
             byte[] checksum = new byte[4];
             Array.Copy(hash, 0, checksum, 0, 4); // First 4 bytes of hash
-            
+
             using var finalStream = new MemoryStream();
             finalStream.Write(result, 0, result.Length);
             finalStream.Write(checksum, 0, checksum.Length);
@@ -76,49 +76,49 @@ public static class SaveStateSerializer
             throw new ArgumentException("Invalid save state data", nameof(data));
 
         using var inputStream = new MemoryStream(data);
-        
+
         // Verify checksum
         if (data.Length < 4)
             throw new ArgumentException("Save state data too short for checksum");
-            
+
         byte[] dataWithoutChecksum = new byte[data.Length - 4];
         byte[] expectedChecksum = new byte[4];
         Array.Copy(data, 0, dataWithoutChecksum, 0, dataWithoutChecksum.Length);
         Array.Copy(data, dataWithoutChecksum.Length, expectedChecksum, 0, 4);
-        
+
         using (var sha256 = SHA256.Create())
         {
             byte[] hash = sha256.ComputeHash(dataWithoutChecksum);
             byte[] actualChecksum = new byte[4];
             Array.Copy(hash, 0, actualChecksum, 0, 4);
-            
+
             if (!actualChecksum.AsSpan().SequenceEqual(expectedChecksum.AsSpan()))
                 throw new InvalidDataException("Save state checksum verification failed");
         }
-        
+
         // Reset stream to read data without checksum
         inputStream.SetLength(dataWithoutChecksum.Length);
         inputStream.Position = 0;
         inputStream.Write(dataWithoutChecksum, 0, dataWithoutChecksum.Length);
         inputStream.Position = 0;
-        
+
         // Read and verify header
         byte magic = (byte)inputStream.ReadByte();
         if (magic != SAVE_STATE_MAGIC)
             throw new InvalidDataException("Invalid save state magic number");
-            
+
         byte version = (byte)inputStream.ReadByte();
         if (version != SAVE_STATE_VERSION)
             throw new InvalidDataException($"Unsupported save state version: {version}");
-        
+
         // Read uncompressed size
         byte[] sizeBytes = new byte[sizeof(int)];
         inputStream.Read(sizeBytes, 0, sizeof(int));
         int uncompressedSize = BitConverter.ToInt32(sizeBytes, 0);
-        
+
         if (uncompressedSize <= 0 || uncompressedSize > 10 * 1024 * 1024) // 10MB limit
             throw new InvalidDataException("Invalid uncompressed size");
-        
+
         // Decompress the data
         byte[] jsonBytes = new byte[uncompressedSize];
         using (var deflateStream = new DeflateStream(inputStream, CompressionMode.Decompress))
@@ -132,17 +132,17 @@ public static class SaveStateSerializer
                 totalRead += read;
             }
         }
-        
+
         // Deserialize from JSON
         var jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
-        
+
         SaveState? saveState = JsonSerializer.Deserialize<SaveState>(jsonBytes, jsonOptions);
         if (saveState == null)
             throw new InvalidDataException("Failed to deserialize save state");
-            
+
         return saveState;
     }
 
@@ -176,28 +176,28 @@ public static class SaveStateSerializer
         try
         {
             using var inputStream = new MemoryStream(data);
-            
+
             // Skip checksum validation for info retrieval
             byte[] dataWithoutChecksum = new byte[data.Length - 4];
             Array.Copy(data, 0, dataWithoutChecksum, 0, dataWithoutChecksum.Length);
-            
+
             inputStream.SetLength(dataWithoutChecksum.Length);
             inputStream.Position = 0;
             inputStream.Write(dataWithoutChecksum, 0, dataWithoutChecksum.Length);
             inputStream.Position = 0;
-            
+
             // Read header
             byte magic = (byte)inputStream.ReadByte();
             byte version = (byte)inputStream.ReadByte();
-            
+
             if (magic != SAVE_STATE_MAGIC)
                 return new SaveStateInfo { IsValid = false };
-            
+
             // Read uncompressed size
             byte[] sizeBytes = new byte[sizeof(int)];
             inputStream.Read(sizeBytes, 0, sizeof(int));
             int uncompressedSize = BitConverter.ToInt32(sizeBytes, 0);
-            
+
             return new SaveStateInfo
             {
                 IsValid = true,

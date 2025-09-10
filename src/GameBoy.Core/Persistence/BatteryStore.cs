@@ -25,11 +25,11 @@ public static class BatteryStore
         // Extract title from ROM header (0x134-0x143)
         var titleBytes = new byte[16];
         Array.Copy(romData, 0x134, titleBytes, 0, 16);
-        
+
         // Remove null bytes and convert to string
         int titleLength = Array.IndexOf(titleBytes, (byte)0);
         if (titleLength == -1) titleLength = 16;
-        
+
         string title = Encoding.ASCII.GetString(titleBytes, 0, titleLength)
             .Replace(" ", "_")
             .Replace("/", "_")
@@ -39,12 +39,12 @@ public static class BatteryStore
         int hashLength = Math.Min(romData.Length, 32768);
         byte[] hashBytes = new byte[hashLength];
         Array.Copy(romData, 0, hashBytes, 0, hashLength);
-        
+
         using (var sha256 = SHA256.Create())
         {
             byte[] hash = sha256.ComputeHash(hashBytes);
             string hashString = Convert.ToHexString(hash)[..8]; // First 8 chars of hash
-            
+
             return $"battery_{title}_{hashString}";
         }
     }
@@ -57,7 +57,7 @@ public static class BatteryStore
     public static bool ValidateBatteryData(byte[]? data)
     {
         if (data == null) return true; // Null is valid (no save data)
-        
+
         // Reasonable size limits (8KB to 128KB for Game Boy cartridges)
         return data.Length >= 0 && data.Length <= 131072;
     }

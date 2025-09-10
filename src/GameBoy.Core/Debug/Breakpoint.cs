@@ -42,10 +42,10 @@ public sealed class Breakpoint
             BreakpointType.Conditional => "COND",
             _ => "UNK"
         };
-        
+
         var status = Enabled ? "" : " (DISABLED)";
         var desc = string.IsNullOrEmpty(Description) ? "" : $" - {Description}";
-        
+
         return $"{typeStr} @ 0x{Address:X4}{status}{desc}";
     }
 }

@@ -108,8 +108,8 @@ public sealed class BreakpointManager
     public bool ShouldBreak(ushort pc, Cpu.Registers registers, IMemoryReader memory)
     {
         // Check address breakpoints for execution
-        if (_addressBreakpoints.TryGetValue(pc, out var breakpoint) 
-            && breakpoint.Enabled 
+        if (_addressBreakpoints.TryGetValue(pc, out var breakpoint)
+            && breakpoint.Enabled
             && breakpoint.Type == BreakpointType.Execute)
         {
             return true;

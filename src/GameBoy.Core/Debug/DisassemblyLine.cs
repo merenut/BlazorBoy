@@ -49,7 +49,7 @@ public readonly struct DisassemblyLine
     public string GetBytesString()
     {
         if (Bytes == null || Bytes.Length == 0) return "";
-        
+
         var result = "";
         for (int i = 0; i < Bytes.Length; i++)
         {

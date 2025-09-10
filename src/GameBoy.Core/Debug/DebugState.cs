@@ -66,7 +66,7 @@ public readonly struct PpuState
     public bool SpritesEnabled => (LCDC & 0x02) != 0;
     public bool BackgroundEnabled => (LCDC & 0x01) != 0;
 
-    public PpuState(byte lcdc, byte stat, byte scy, byte scx, byte ly, byte lyc, 
+    public PpuState(byte lcdc, byte stat, byte scy, byte scx, byte ly, byte lyc,
                    byte wy, byte wx, byte bgp, byte obp0, byte obp1)
     {
         LCDC = lcdc;

@@ -34,13 +34,13 @@ public sealed class TraceLogger
         if (!Enabled) return;
 
         var entry = new TraceEntry(pc, opcode, registers, cycleCount);
-        
+
         _buffer[_head] = entry;
         _head = (_head + 1) % _capacity;
-        
+
         if (_count < _capacity)
             _count++;
-            
+
         _totalEntries++;
     }
 

@@ -66,16 +66,16 @@
                 <div class="col-md-6">
                     <h6 class="mb-2">Memory Regions</h6>
                     <div class="d-flex gap-2 flex-wrap">
-                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowMemoryStats(\"ROM\")">
+                        <button class="btn btn-sm btn-outline-primary" @onclick='() => ShowMemoryStats("ROM")'>
                             ROM (0x0000-0x7FFF)
                         </button>
-                        <button class="btn btn-sm btn-outline-success" @onclick="() => ShowMemoryStats(\"VRAM\")">
+                        <button class="btn btn-sm btn-outline-success" @onclick='() => ShowMemoryStats("VRAM")'>
                             VRAM (0x8000-0x9FFF)
                         </button>
-                        <button class="btn btn-sm btn-outline-warning" @onclick="() => ShowMemoryStats(\"WRAM\")">
+                        <button class="btn btn-sm btn-outline-warning" @onclick='() => ShowMemoryStats("WRAM")'>
                             WRAM (0xC000-0xDFFF)
                         </button>
-                        <button class="btn btn-sm btn-outline-info" @onclick="() => ShowMemoryStats(\"HRAM\")">
+                        <button class="btn btn-sm btn-outline-info" @onclick='() => ShowMemoryStats("HRAM")'>
                             HRAM (0xFF80-0xFFFE)
                         </button>
                     </div>

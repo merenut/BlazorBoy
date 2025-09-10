@@ -22,12 +22,12 @@ internal sealed class ExpressionEvaluator
 
         // Simple tokenization and evaluation
         // This is a basic implementation - a full parser would be more robust
-        
+
         try
         {
             // Remove whitespace and parentheses for simpler parsing
             var normalized = expression.Replace(" ", "").Replace("(", "").Replace(")", "");
-            
+
             // Handle simple comparisons first
             if (TryEvaluateComparison(normalized, registers, memory, out bool result))
             {
@@ -67,7 +67,7 @@ internal sealed class ExpressionEvaluator
 
         // Find comparison operator
         string[] operators = { "==", "!=", "<=", ">=", "<", ">" };
-        
+
         foreach (var op in operators)
         {
             var index = expression.IndexOf(op);

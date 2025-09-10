@@ -59,7 +59,7 @@ public sealed class Emulator : IDebugController
         _mmu.Apu = _apu;
         _mmu.Joypad = Joypad;
         _ppu.Mmu = _mmu;
-        
+
         // Initialize debug components
         _memoryReader = new MmuMemoryReader(_mmu);
     }
@@ -515,7 +515,7 @@ public sealed class Emulator : IDebugController
 
             _cycleAccumulator += cycles;
             cyclesRun += cycles;
-            
+
             if (!_debugMode)
             {
                 _totalCycles += (ulong)cycles;
@@ -573,7 +573,7 @@ public sealed class Emulator : IDebugController
 
         // Check if current instruction is a CALL
         byte currentOpcode = _mmu.ReadByte(_cpu.Regs.PC);
-        
+
         // CALL instructions: 0xC4, 0xCC, 0xCD, 0xD4, 0xDC
         bool isCall = currentOpcode == 0xCD || // CALL a16
                      currentOpcode == 0xC4 || // CALL NZ,a16  
@@ -619,7 +619,7 @@ public sealed class Emulator : IDebugController
         if (!_debugMode) return;
 
         _isPaused = false;
-        
+
         // Continue execution until a breakpoint is hit or user pauses
         // This will be called from the main execution loop
     }
@@ -635,7 +635,7 @@ public sealed class Emulator : IDebugController
     public DebugState CaptureState()
     {
         var cpuState = new CpuState(_cpu.Regs, _cpu.InterruptsEnabled, _cpu.IsHalted);
-        
+
         var ppuState = new PpuState(
             _mmu.ReadByte(IoRegs.LCDC),
             _mmu.ReadByte(IoRegs.STAT),
@@ -666,12 +666,12 @@ public sealed class Emulator : IDebugController
     {
         length = Math.Min(length, 0x10000 - startAddress); // Don't read past address space
         var data = new byte[length];
-        
+
         for (int i = 0; i < length; i++)
         {
             data[i] = _mmu.ReadByte((ushort)(startAddress + i));
         }
-        
+
         return new MemoryBlock(startAddress, data);
     }
 
@@ -717,13 +717,13 @@ public sealed class Emulator : IDebugController
     private void TrackCallDepth(byte opcode)
     {
         // CALL instructions increase call depth
-        if (opcode == 0xCD || opcode == 0xC4 || opcode == 0xCC || 
+        if (opcode == 0xCD || opcode == 0xC4 || opcode == 0xCC ||
             opcode == 0xD4 || opcode == 0xDC)
         {
             _callDepth++;
         }
         // RET instructions decrease call depth
-        else if (opcode == 0xC9 || opcode == 0xC0 || opcode == 0xC8 || 
+        else if (opcode == 0xC9 || opcode == 0xC0 || opcode == 0xC8 ||
                 opcode == 0xD0 || opcode == 0xD8)
         {
             _callDepth = Math.Max(0, _callDepth - 1);

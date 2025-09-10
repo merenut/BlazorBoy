@@ -27,7 +27,7 @@ public sealed class ConditionalBreakpoint
         var status = Enabled ? "" : " (DISABLED)";
         var hits = HitCount > 0 ? $" [hits: {HitCount}]" : "";
         var desc = string.IsNullOrEmpty(Description) ? "" : $" - {Description}";
-        
+
         return $"COND: {Expression}{status}{hits}{desc}";
     }
 }
