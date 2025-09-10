@@ -5,6 +5,10 @@ window.gbInterop = (function(){
   let audioWorkletNode = null;
   let audioEnabled = false;
   let audioInitialized = false;
+  
+  // Persistent buffer for optimized frame drawing
+  let frameBufferCache = null;
+  let frameBufferSize = 0;
 
   function startRenderLoop(dotnet) {
     dotnetObj = dotnet;
@@ -37,21 +41,28 @@ window.gbInterop = (function(){
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const imageData = ctx.createImageData(width, height);
-    const data = imageData.data; // Uint8ClampedArray
-    // buffer is int32 array with ARGB (A in high byte)
+    
+    // Create or reuse ImageData and Uint8Array buffer for performance
+    const pixelCount = width * height;
+    const bufferSize = pixelCount * 4; // RGBA
+    
+    if (!frameBufferCache || frameBufferSize !== bufferSize) {
+      frameBufferCache = ctx.createImageData(width, height);
+      frameBufferSize = bufferSize;
+    }
+    
+    const data = frameBufferCache.data; // Uint8ClampedArray
+    
+    // Optimized conversion from Int32 ARGB to Uint8 RGBA
     for (let i = 0, j = 0; i < buffer.length; i++, j += 4) {
       const argb = buffer[i] >>> 0;
-      const a = (argb >>> 24) & 0xFF;
-      const r = (argb >>> 16) & 0xFF;
-      const g = (argb >>> 8) & 0xFF;
-      const b = argb & 0xFF;
-      data[j] = r;
-      data[j + 1] = g;
-      data[j + 2] = b;
-      data[j + 3] = a;
+      data[j] = (argb >>> 16) & 0xFF;     // R
+      data[j + 1] = (argb >>> 8) & 0xFF;  // G
+      data[j + 2] = argb & 0xFF;          // B
+      data[j + 3] = (argb >>> 24) & 0xFF; // A
     }
-    ctx.putImageData(imageData, 0, 0);
+    
+    ctx.putImageData(frameBufferCache, 0, 0);
   }
 
   async function initAudio() {

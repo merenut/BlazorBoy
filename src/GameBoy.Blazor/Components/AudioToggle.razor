@@ -1,0 +1,107 @@
+@using GameBoy.Blazor.Services
+@inject ISettingsService SettingsService
+@inject IJSRuntime JS
+
+<div class="audio-controls d-flex align-items-center gap-2">
+    <button class="btn btn-sm @(_audioEnabled ? "btn-success" : "btn-outline-secondary")" 
+            @onclick="ToggleAudio">
+        @(_audioEnabled ? "🔊" : "🔇") @(_audioEnabled ? "On" : "Off")
+    </button>
+    
+    @if (_audioEnabled)
+    {
+        <div class="d-flex align-items-center gap-1">
+            <label class="form-label mb-0 small">Vol:</label>
+            <input type="range" 
+                   class="form-range volume-slider" 
+                   min="0" 
+                   max="100" 
+                   value="@((int)(_audioVolume * 100))" 
+                   @oninput="OnVolumeChanged" />
+            <small class="text-muted volume-display">@((int)(_audioVolume * 100))%</small>
+        </div>
+    }
+</div>
+
+<style>
+    .audio-controls .volume-slider {
+        width: 80px;
+    }
+    
+    .audio-controls .volume-display {
+        min-width: 35px;
+        text-align: right;
+    }
+</style>
+
+@code {
+    [Parameter] public EventCallback<bool> OnAudioStateChanged { get; set; }
+    [Parameter] public EventCallback<double> OnVolumeChangeCallback { get; set; }
+    
+    private bool _audioEnabled = false;
+    private double _audioVolume = 0.5;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load settings
+        _audioEnabled = !await SettingsService.GetAudioMutedAsync();
+        _audioVolume = await SettingsService.GetAudioVolumeAsync();
+    }
+
+    private async Task ToggleAudio()
+    {
+        if (_audioEnabled)
+        {
+            _audioEnabled = false;
+            await JS.InvokeVoidAsync("gbInterop.disableAudio");
+        }
+        else
+        {
+            bool success = await JS.InvokeAsync<bool>("gbInterop.enableAudio");
+            if (success)
+            {
+                _audioEnabled = true;
+                await JS.InvokeVoidAsync("gbInterop.setAudioVolume", _audioVolume);
+            }
+        }
+        
+        // Save mute state
+        await SettingsService.SetAudioMutedAsync(!_audioEnabled);
+        
+        // Notify parent
+        await OnAudioStateChanged.InvokeAsync(_audioEnabled);
+    }
+
+    private async Task OnVolumeChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double volume))
+        {
+            _audioVolume = volume / 100.0;
+            
+            if (_audioEnabled)
+            {
+                await JS.InvokeVoidAsync("gbInterop.setAudioVolume", _audioVolume);
+            }
+            
+            // Save volume setting
+            await SettingsService.SetAudioVolumeAsync(_audioVolume);
+            
+            // Notify parent
+            await OnVolumeChangeCallback.InvokeAsync(_audioVolume);
+        }
+    }
+    
+    public async Task SetAudioEnabled(bool enabled)
+    {
+        _audioEnabled = enabled;
+        await SettingsService.SetAudioMutedAsync(!enabled);
+        StateHasChanged();
+    }
+    
+    public async Task SetVolume(double volume)
+    {
+        _audioVolume = Math.Max(0, Math.Min(1, volume));
+        await SettingsService.SetAudioVolumeAsync(_audioVolume);
+        StateHasChanged();
+    }
+}

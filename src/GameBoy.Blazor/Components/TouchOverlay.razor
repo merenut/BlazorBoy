@@ -1,0 +1,296 @@
+@using GameBoy.Blazor.Services
+@inject ISettingsService SettingsService
+@inject IJSRuntime JS
+
+@if (_showOverlay)
+{
+    <div class="touch-overlay">
+        <!-- D-Pad -->
+        <div class="dpad">
+            <button class="dpad-btn dpad-up" 
+                    @onpointerdown="OnUpDown"
+                    @onpointerup="OnUpUp"
+                    @onpointerleave="OnUpUp">
+                ↑
+            </button>
+            <div class="dpad-middle">
+                <button class="dpad-btn dpad-left" 
+                        @onpointerdown="OnLeftDown"
+                        @onpointerup="OnLeftUp"
+                        @onpointerleave="OnLeftUp">
+                    ←
+                </button>
+                <div class="dpad-center"></div>
+                <button class="dpad-btn dpad-right" 
+                        @onpointerdown="OnRightDown"
+                        @onpointerup="OnRightUp"
+                        @onpointerleave="OnRightUp">
+                    →
+                </button>
+            </div>
+            <button class="dpad-btn dpad-down" 
+                    @onpointerdown="OnDownDown"
+                    @onpointerup="OnDownUp"
+                    @onpointerleave="OnDownUp">
+                ↓
+            </button>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="action-btn btn-b" 
+                    @onpointerdown="OnBDown"
+                    @onpointerup="OnBUp"
+                    @onpointerleave="OnBUp">
+                B
+            </button>
+            <button class="action-btn btn-a" 
+                    @onpointerdown="OnADown"
+                    @onpointerup="OnAUp"
+                    @onpointerleave="OnAUp">
+                A
+            </button>
+        </div>
+
+        <!-- Start/Select Buttons -->
+        <div class="start-select-buttons">
+            <button class="start-select-btn" 
+                    @onpointerdown="OnSelectDown"
+                    @onpointerup="OnSelectUp"
+                    @onpointerleave="OnSelectUp">
+                SELECT
+            </button>
+            <button class="start-select-btn" 
+                    @onpointerdown="OnStartDown"
+                    @onpointerup="OnStartUp"
+                    @onpointerleave="OnStartUp">
+                START
+            </button>
+        </div>
+
+        <!-- Toggle Button -->
+        <button class="overlay-toggle" @onclick="ToggleOverlay">
+            @(_overlayEnabled ? "👁️" : "🔲")
+        </button>
+    </div>
+}
+
+<style>
+    .touch-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 1000;
+        user-select: none;
+    }
+
+    .touch-overlay button {
+        pointer-events: auto;
+        background: rgba(0, 0, 0, 0.6);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        color: white;
+        font-weight: bold;
+        touch-action: none;
+        transition: all 0.1s ease;
+    }
+
+    .touch-overlay button:active {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(0.95);
+    }
+
+    /* D-Pad */
+    .dpad {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        display: grid;
+        grid-template-rows: 50px 50px 50px;
+        grid-template-columns: 50px 50px 50px;
+        gap: 2px;
+    }
+
+    .dpad-up {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .dpad-middle {
+        grid-column: 1 / 4;
+        grid-row: 2;
+        display: flex;
+        gap: 2px;
+    }
+
+    .dpad-left {
+        width: 50px;
+        height: 50px;
+    }
+
+    .dpad-center {
+        width: 50px;
+        height: 50px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 50%;
+    }
+
+    .dpad-right {
+        width: 50px;
+        height: 50px;
+    }
+
+    .dpad-down {
+        grid-column: 2;
+        grid-row: 3;
+    }
+
+    .dpad-btn {
+        font-size: 20px;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        position: absolute;
+        bottom: 40px;
+        right: 20px;
+        display: flex;
+        gap: 15px;
+    }
+
+    .action-btn {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        font-size: 18px;
+    }
+
+    /* Start/Select Buttons */
+    .start-select-buttons {
+        position: absolute;
+        bottom: 120px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 20px;
+    }
+
+    .start-select-btn {
+        width: 70px;
+        height: 30px;
+        font-size: 10px;
+        border-radius: 15px;
+    }
+
+    /* Toggle Button */
+    .overlay-toggle {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        font-size: 16px;
+        background: rgba(0, 0, 0, 0.8) !important;
+    }
+
+    /* Hide on larger screens unless explicitly enabled */
+    .touch-overlay {
+        display: none;
+    }
+
+    /* Show on mobile or when enabled */
+    @@media (max-width: 767px) {
+        .touch-overlay {
+            display: block;
+        }
+    }
+
+    .touch-overlay.force-show {
+        display: block !important;
+    }
+</style>
+
+@code {
+    [Parameter] public EventCallback<(string button, bool pressed)> OnButtonStateChanged { get; set; }
+    
+    private bool _showOverlay = false;
+    private bool _overlayEnabled = false;
+    private bool _isMobile = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _overlayEnabled = await SettingsService.GetTouchOverlayEnabledAsync();
+        await CheckIfMobile();
+        UpdateOverlayVisibility();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CheckIfMobile();
+            UpdateOverlayVisibility();
+            StateHasChanged();
+        }
+    }
+
+    private async Task CheckIfMobile()
+    {
+        try
+        {
+            _isMobile = await JS.InvokeAsync<bool>("eval", @"
+                (function() {
+                    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+                    const isSmallScreen = window.innerWidth <= 767;
+                    return isTouchDevice && isSmallScreen;
+                })()
+            ");
+        }
+        catch
+        {
+            _isMobile = false;
+        }
+    }
+
+    private void UpdateOverlayVisibility()
+    {
+        _showOverlay = _isMobile || _overlayEnabled;
+    }
+
+    private async Task ToggleOverlay()
+    {
+        _overlayEnabled = !_overlayEnabled;
+        await SettingsService.SetTouchOverlayEnabledAsync(_overlayEnabled);
+        UpdateOverlayVisibility();
+    }
+
+    // Individual button handlers to avoid syntax issues with lambdas
+    private async Task OnUpDown() => await OnButtonStateChanged.InvokeAsync(("Up", true));
+    private async Task OnUpUp() => await OnButtonStateChanged.InvokeAsync(("Up", false));
+    private async Task OnDownDown() => await OnButtonStateChanged.InvokeAsync(("Down", true));
+    private async Task OnDownUp() => await OnButtonStateChanged.InvokeAsync(("Down", false));
+    private async Task OnLeftDown() => await OnButtonStateChanged.InvokeAsync(("Left", true));
+    private async Task OnLeftUp() => await OnButtonStateChanged.InvokeAsync(("Left", false));
+    private async Task OnRightDown() => await OnButtonStateChanged.InvokeAsync(("Right", true));
+    private async Task OnRightUp() => await OnButtonStateChanged.InvokeAsync(("Right", false));
+    private async Task OnADown() => await OnButtonStateChanged.InvokeAsync(("A", true));
+    private async Task OnAUp() => await OnButtonStateChanged.InvokeAsync(("A", false));
+    private async Task OnBDown() => await OnButtonStateChanged.InvokeAsync(("B", true));
+    private async Task OnBUp() => await OnButtonStateChanged.InvokeAsync(("B", false));
+    private async Task OnStartDown() => await OnButtonStateChanged.InvokeAsync(("Start", true));
+    private async Task OnStartUp() => await OnButtonStateChanged.InvokeAsync(("Start", false));
+    private async Task OnSelectDown() => await OnButtonStateChanged.InvokeAsync(("Select", true));
+    private async Task OnSelectUp() => await OnButtonStateChanged.InvokeAsync(("Select", false));
+
+    public async Task SetOverlayEnabled(bool enabled)
+    {
+        _overlayEnabled = enabled;
+        await SettingsService.SetTouchOverlayEnabledAsync(enabled);
+        UpdateOverlayVisibility();
+        StateHasChanged();
+    }
+}

@@ -2,77 +2,160 @@
 @using GameBoy.Core
 @using GameBoy.Core.Persistence
 @using GameBoy.Blazor.Services
+@using GameBoy.Blazor.Components
 @inject Emulator Emulator
 @inject IPersistenceService PersistenceService
+@inject ISettingsService SettingsService
 @inject IJSRuntime JS
 @implements IDisposable
 
-<h1>Game Boy (Blazor)</h1>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col">
+            <h1>Game Boy (Blazor)</h1>
+        </div>
+    </div>
 
-<div class="row g-3">
-    <div class="col-auto">
-        <InputFile OnChange="OnRomSelected" />
+    <!-- Main Control Panel -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3 align-items-center">
+                <!-- ROM Loader -->
+                <div class="col-md-3">
+                    <RomLoader OnRomLoaded="OnRomLoaded" @ref="_romLoader" />
+                </div>
+
+                <!-- Emulator Controls -->
+                <div class="col-md-3">
+                    <EmulatorControls HasRom="_hasRom" 
+                                    IsRunning="_isRunning"
+                                    OnToggleRunPause="ToggleRunPause"
+                                    OnReset="ResetEmulator"
+                                    OnSpeedChangeCallback="OnSpeedChanged" 
+                                    @ref="_emulatorControls" />
+                </div>
+
+                <!-- Audio Controls -->
+                <div class="col-md-3">
+                    <AudioToggle OnAudioStateChanged="OnAudioStateChanged"
+                               OnVolumeChangeCallback="OnVolumeChanged" 
+                               @ref="_audioToggle" />
+                </div>
+
+                <!-- FPS Counter -->
+                <div class="col-md-3">
+                    <FpsCounter CurrentFps="_lastFps" @ref="_fpsCounter" />
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="col-auto align-self-center">
-        <span>FPS: @(_lastFps.ToString("0.0"))</span>
-    </div>
-    <div class="col-auto align-self-center">
-        <button class="btn btn-sm @(_audioEnabled ? "btn-success" : "btn-outline-secondary")" @onclick="ToggleAudio">
-            @(_audioEnabled ? "🔊 Audio On" : "🔇 Audio Off")
-        </button>
-    </div>
-    <div class="col-auto align-self-center">
-        <label class="form-label mb-0 me-2">Volume:</label>
-        <input type="range" class="form-range" style="width: 100px;" min="0" max="100" 
-               value="@((int)(_audioVolume * 100))" @oninput="OnVolumeChanged" />
-        <small class="text-muted">@((int)(_audioVolume * 100))%</small>
-    </div>
-    <div class="col-auto">
-        <small class="text-muted">Debug:</small>
-        <button class="btn btn-sm btn-outline-secondary" @onclick="CreateTestPattern">Test VRAM</button>
-        <button class="btn btn-sm btn-outline-secondary" @onclick="CreateDirectTestPattern">Test Direct</button>
-        <button class="btn btn-sm btn-outline-info" @onclick="ShowDebugInfo">Debug Info</button>
+
+    <!-- Game Screen and Debug Section -->
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Game Canvas -->
+            <div class="card">
+                <div class="card-body text-center">
+                    <div tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
+                        <canvas id="screen" width="160" height="144" 
+                                style="image-rendering: pixelated; width: 320px; height: 288px; border:1px solid #ccc; background: #9bbc0f"></canvas>
+                        <div class="mt-2">
+                            <small class="text-muted">Click canvas and use keyboard controls</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save States -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6 class="card-title">Save States</h6>
+                    <div class="d-flex gap-2 align-items-center">
+                        <button class="btn btn-sm btn-success" @onclick="SaveState" disabled="@(!_hasRom)">
+                            💾 Save State
+                        </button>
+                        <button class="btn btn-sm btn-primary" @onclick="LoadState" disabled="@(!_hasRom)">
+                            📁 Load State
+                        </button>
+                        @if (_saveStateMessage != null)
+                        {
+                            <small class="ms-2 @(_saveStateSuccess ? "text-success" : "text-danger")">@_saveStateMessage</small>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Input Remapping -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <InputRemapping OnMappingsChanged="OnInputMappingsChanged" @ref="_inputRemapping" />
+                </div>
+            </div>
+
+            <!-- Debug Section -->
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Debug Tools</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="CreateTestPattern">Test VRAM</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="CreateDirectTestPattern">Test Direct</button>
+                        <button class="btn btn-sm btn-outline-info" @onclick="ShowDebugInfo">Debug Info</button>
+                    </div>
+                    
+                    @if (_showDebugInfo)
+                    {
+                        <div class="mt-3">
+                            <pre style="font-size: 0.8em; background-color: #f8f9fa; padding: 10px; border-radius: 5px; max-height: 300px; overflow-y: auto;">@_debugInfo</pre>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-@if (_showDebugInfo)
-{
-    <div class="mt-3">
-        <pre style="font-size: 0.8em; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">@_debugInfo</pre>
-    </div>
-}
-
-<div class="row mt-3">
-    <div class="col-auto">
-        <small class="text-muted">Save States:</small>
-        <button class="btn btn-sm btn-success" @onclick="SaveState" disabled="@(_currentRomKey == null)">
-            💾 Save State
-        </button>
-        <button class="btn btn-sm btn-primary" @onclick="LoadState" disabled="@(_currentRomKey == null)">
-            📁 Load State
-        </button>
-        @if (_saveStateMessage != null)
-        {
-            <small class="ms-2 @(_saveStateSuccess ? "text-success" : "text-danger")">@_saveStateMessage</small>
-        }
-    </div>
-</div>
-
-<div tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
-    <canvas id="screen" width="160" height="144" style="image-rendering: pixelated; width: 320px; height: 288px; border:1px solid #ccc"></canvas>
-    <p class="text-muted">Click here and use arrows, Z, X, Enter, Shift.</p>
-    </div>
+<!-- Touch Overlay for Mobile -->
+<TouchOverlay OnButtonStateChanged="OnTouchInput" @ref="_touchOverlay" />
 
 @code {
+    // Component references
+    private RomLoader? _romLoader;
+    private EmulatorControls? _emulatorControls;
+    private AudioToggle? _audioToggle;
+    private FpsCounter? _fpsCounter;
+    private InputRemapping? _inputRemapping;
+    private TouchOverlay? _touchOverlay;
+
+    // Core emulator state
     private DotNetObjectReference<Index>? _dotNetRef;
+    private ElementReference _focusable;
+    private bool _hasRom = false;
+    private bool _isRunning = false;
+    private bool _isInTestMode = false;
+    private double _speedMultiplier = 1.0;
+    private Dictionary<string, string> _inputMappings = new();
+
+    // FPS tracking
     private double _lastFps;
     private long _lastTs;
-    private ElementReference _focusable;
-    private bool _isInTestMode = false;
+
+    // Debug
     private bool _showDebugInfo = false;
     private string _debugInfo = "";
-    private bool _audioEnabled = false;
-    private double _audioVolume = 0.5;
+
+    // Save state
+    private string? _currentRomKey;
+    private string? _saveStateMessage;
+    private bool _saveStateSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load settings
+        _speedMultiplier = await SettingsService.GetSpeedMultiplierAsync();
+        _inputMappings = await SettingsService.GetInputMappingsAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -98,13 +181,12 @@
         if (delta > 0)
             _lastFps = 1000.0 / delta;
 
-        // Skip emulation if we're in test mode
-        if (!_isInTestMode)
+        // Skip emulation if we're in test mode or paused
+        if (!_isInTestMode && _isRunning && _hasRom)
         {
-            // Run emulator with balanced cycles per frame to maintain good performance
-            // while allowing ROM to execute properly
-            const int cyclesPerAnimationFrame = 17500; // Quarter of full 70224 for balanced performance
-            bool frameReady = Emulator.StepFrame(cyclesPerAnimationFrame);
+            // Apply speed multiplier
+            int cyclesPerFrame = (int)(17500 * _speedMultiplier); // Adjusted for speed
+            bool frameReady = Emulator.StepFrame(cyclesPerFrame);
             
             if (frameReady)
             {
@@ -112,10 +194,7 @@
             }
 
             // Update audio if enabled
-            if (_audioEnabled)
-            {
-                await UpdateAudioBuffer();
-            }
+            await UpdateAudioBuffer();
         }
         
         StateHasChanged();
@@ -138,60 +217,115 @@
         }
     }
 
-    
+    // ROM loading
+    private async Task OnRomLoaded((byte[] data, string fileName) romData)
+    {
+        // Save current battery RAM before loading new ROM
+        await SaveCurrentBatteryRam();
+        
+        // Generate ROM key for persistence
+        _currentRomKey = BatteryStore.GenerateRomKey(romData.data);
+        
+        // Load new ROM
+        Emulator.LoadRom(romData.data);
+        
+        // Load battery RAM for this ROM if it exists
+        await LoadBatteryRamForCurrentRom();
+        
+        _hasRom = true;
+        _isRunning = true; // Auto-start when ROM loads
+        _isInTestMode = false;
+        
+        StateHasChanged();
+    }
 
+    // Emulator control
+    private void ToggleRunPause()
+    {
+        _isRunning = !_isRunning;
+    }
+
+    private void ResetEmulator()
+    {
+        if (_hasRom)
+        {
+            Emulator.Reset();
+            _isRunning = true;
+        }
+    }
+
+    private async Task OnSpeedChanged(double speed)
+    {
+        _speedMultiplier = speed;
+        await SettingsService.SetSpeedMultiplierAsync(speed);
+    }
+
+    // Audio control
+    private void OnAudioStateChanged(bool enabled)
+    {
+        // Audio state is managed by the AudioToggle component
+    }
+
+    private void OnVolumeChanged(double volume)
+    {
+        // Volume is managed by the AudioToggle component
+    }
+
+    // Input handling
     private void OnKeyDown(KeyboardEventArgs e) => UpdateJoypad(e, true);
     private void OnKeyUp(KeyboardEventArgs e) => UpdateJoypad(e, false);
+
+    private void UpdateJoypad(KeyboardEventArgs e, bool down)
+    {
+        // Use current input mappings
+        foreach (var mapping in _inputMappings)
+        {
+            if (mapping.Value == e.Key)
+            {
+                switch (mapping.Key)
+                {
+                    case "Up": Emulator.Joypad.Up = down; break;
+                    case "Down": Emulator.Joypad.Down = down; break;
+                    case "Left": Emulator.Joypad.Left = down; break;
+                    case "Right": Emulator.Joypad.Right = down; break;
+                    case "A": Emulator.Joypad.A = down; break;
+                    case "B": Emulator.Joypad.B = down; break;
+                    case "Start": Emulator.Joypad.Start = down; break;
+                    case "Select": Emulator.Joypad.Select = down; break;
+                }
+                break;
+            }
+        }
+    }
+
+    private void OnTouchInput((string button, bool pressed) input)
+    {
+        // Handle touch input
+        switch (input.button)
+        {
+            case "Up": Emulator.Joypad.Up = input.pressed; break;
+            case "Down": Emulator.Joypad.Down = input.pressed; break;
+            case "Left": Emulator.Joypad.Left = input.pressed; break;
+            case "Right": Emulator.Joypad.Right = input.pressed; break;
+            case "A": Emulator.Joypad.A = input.pressed; break;
+            case "B": Emulator.Joypad.B = input.pressed; break;
+            case "Start": Emulator.Joypad.Start = input.pressed; break;
+            case "Select": Emulator.Joypad.Select = input.pressed; break;
+        }
+    }
+
+    private async Task OnInputMappingsChanged(Dictionary<string, string> mappings)
+    {
+        _inputMappings = mappings;
+        await SettingsService.SetInputMappingsAsync(mappings);
+    }
 
     private void OnCanvasClick()
     {
         _isInTestMode = false; // Resume emulation when user clicks canvas
     }
 
-    private void UpdateJoypad(KeyboardEventArgs e, bool down)
-    {
-        switch (e.Key)
-        {
-            case "ArrowRight": Emulator.Joypad.Right = down; break;
-            case "ArrowLeft": Emulator.Joypad.Left = down; break;
-            case "ArrowUp": Emulator.Joypad.Up = down; break;
-            case "ArrowDown": Emulator.Joypad.Down = down; break;
-            case "z": case "Z": Emulator.Joypad.A = down; break;
-            case "x": case "X": Emulator.Joypad.B = down; break;
-            case "Enter": Emulator.Joypad.Start = down; break;
-            case "Shift": Emulator.Joypad.Select = down; break;
-        }
-    }
-
-    private string? _currentRomKey;
-    private string? _saveStateMessage;
-    private bool _saveStateSuccess;
-
-    private async Task OnRomSelected(InputFileChangeEventArgs e)
-    {
-        var file = e.File;
-        if (file is null) return;
-        
-        using var stream = file.OpenReadStream(maxAllowedSize: 4 * 1024 * 1024);
-        using var ms = new MemoryStream();
-        await stream.CopyToAsync(ms);
-        byte[] romData = ms.ToArray();
-        
-        // Save current battery RAM before loading new ROM
-        await SaveCurrentBatteryRam();
-        
-        // Generate ROM key for persistence
-        _currentRomKey = BatteryStore.GenerateRomKey(romData);
-        
-        // Load new ROM
-        Emulator.LoadRom(romData);
-        
-        // Load battery RAM for this ROM if it exists
-        await LoadBatteryRamForCurrentRom();
-        
-        _isInTestMode = false; // Resume emulation when ROM is loaded
-    }
-
+    // Save state functionality (preserved from original)
     private async Task SaveCurrentBatteryRam()
     {
         if (_currentRomKey != null && Emulator.HasBatteryRam)
@@ -304,6 +438,7 @@
         });
     }
 
+    // Debug functionality (preserved from original)
     private async Task CreateTestPattern()
     {
         _isInTestMode = true; // Pause emulation
@@ -324,36 +459,6 @@
     {
         _debugInfo = Emulator.GetDebugInfo();
         _showDebugInfo = !_showDebugInfo;
-    }
-
-    private async Task ToggleAudio()
-    {
-        if (_audioEnabled)
-        {
-            _audioEnabled = false;
-            await JS.InvokeVoidAsync("gbInterop.disableAudio");
-        }
-        else
-        {
-            bool success = await JS.InvokeAsync<bool>("gbInterop.enableAudio");
-            if (success)
-            {
-                _audioEnabled = true;
-                await JS.InvokeVoidAsync("gbInterop.setAudioVolume", _audioVolume);
-            }
-        }
-    }
-
-    private async Task OnVolumeChanged(ChangeEventArgs e)
-    {
-        if (double.TryParse(e.Value?.ToString(), out double volume))
-        {
-            _audioVolume = volume / 100.0;
-            if (_audioEnabled)
-            {
-                await JS.InvokeVoidAsync("gbInterop.setAudioVolume", _audioVolume);
-            }
-        }
     }
 
     public void Dispose()

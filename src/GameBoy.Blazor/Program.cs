@@ -14,4 +14,7 @@ builder.Services.AddSingleton<Emulator>();
 // Register persistence service
 builder.Services.AddScoped<IPersistenceService, BrowserPersistenceService>();
 
+// Register settings service
+builder.Services.AddScoped<ISettingsService, BrowserSettingsService>();
+
 await builder.Build().RunAsync();
