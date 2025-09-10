@@ -193,23 +193,23 @@ public class InterruptIntegrationTests
     public void ComplexEmulatorScenario_MultipleInterruptSources()
     {
         var emulator = new Emulator();
-        
+
         // Setup a minimal ROM for testing
         var romData = new byte[0x8000]; // 32KB ROM
         Array.Fill<byte>(romData, 0x00); // Fill with NOPs
-        
+
         // Set up minimal ROM header to make it valid
         romData[0x0147] = 0x00; // MBC type: ROM ONLY
         romData[0x0148] = 0x00; // ROM size: 32KB
         romData[0x0149] = 0x00; // RAM size: None
-        
+
         // Set up interrupt vectors with RETI instructions
         romData[0x0040] = 0xD9; // VBlank: RETI
         romData[0x0048] = 0xD9; // LCD STAT: RETI  
         romData[0x0050] = 0xD9; // Timer: RETI
         romData[0x0058] = 0xD9; // Serial: RETI
         romData[0x0060] = 0xD9; // Joypad: RETI
-        
+
         // Load ROM
         emulator.LoadRom(romData);
 
@@ -253,22 +253,22 @@ public class InterruptIntegrationTests
 
         // Setup a minimal ROM for testing
         var romData = new byte[0x8000]; // 32KB ROM
-        
+
         // Fill with NOPs by default
         Array.Fill<byte>(romData, 0x00);
-        
+
         // Set up minimal ROM header to make it valid
         romData[0x0147] = 0x00; // MBC type: ROM ONLY
         romData[0x0148] = 0x00; // ROM size: 32KB
         romData[0x0149] = 0x00; // RAM size: None
-        
+
         // Set up interrupt vectors with RETI instructions (0xD9) to return immediately
         romData[0x0040] = 0xD9; // VBlank: RETI
         romData[0x0048] = 0xD9; // LCD STAT: RETI
         romData[0x0050] = 0xD9; // Timer: RETI
         romData[0x0058] = 0xD9; // Serial: RETI
         romData[0x0060] = 0xD9; // Joypad: RETI
-        
+
         // Load ROM
         emulator.LoadRom(romData);
 
@@ -285,10 +285,10 @@ public class InterruptIntegrationTests
         // Store initial interrupt state
         byte initialIF = emulator.Mmu.InterruptController.IF;
         Assert.Equal(0x05 | 0xE0, initialIF); // VBlank (0x01) + Timer (0x04) + upper bits
-        
+
         // Step CPU once to service the highest priority interrupt
         emulator.Cpu.Step();
-        
+
         // Check that VBlank interrupt was cleared first (proving priority works)
         byte ifAfterService = emulator.Mmu.InterruptController.IF;
         Assert.True((ifAfterService & 0x01) == 0, "VBlank should have been cleared first (highest priority)");
