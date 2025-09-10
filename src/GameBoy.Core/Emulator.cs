@@ -57,7 +57,11 @@ public sealed class Emulator
     /// <summary>
     /// Loads a ROM image into the emulator.
     /// </summary>
-    public void LoadRom(byte[] rom) => _mmu.LoadRom(rom);
+    public void LoadRom(byte[] rom)
+    {
+        _mmu.LoadRom(rom);
+        Reset(); // Reset emulator state when loading a new ROM
+    }
 
     /// <summary>
     /// Creates a test pattern in VRAM to verify rendering pipeline.
