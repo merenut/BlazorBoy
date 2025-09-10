@@ -24,7 +24,7 @@
                 <strong>Drop ROM file here</strong><br />
                 <small style="color: var(--text-muted);">or</small>
             </div>
-            <InputFile OnChange="OnFileSelected" accept=".gb,.gbc" class="d-none" @ref="_fileInput" />
+            <InputFile OnChange="OnFileSelected" accept=".gb,.gbc" style="display: none;" @ref="_fileInput" />
             <button type="button" class="btn-modern btn-primary" style="margin-top: 0.75rem;" @onclick="OpenFilePicker">
                 📁 Browse Files
             </button>
