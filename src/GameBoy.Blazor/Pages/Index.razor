@@ -164,7 +164,7 @@
             _dotNetRef = DotNetObjectReference.Create(this);
             
             // Draw initial frame to ensure canvas shows default background color
-            await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+            await JS.InvokeVoidAsync("gbInterop.drawFrameRgba", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBufferRgba);
             
             await JS.InvokeVoidAsync("gbInterop.startRenderLoop", _dotNetRef);
             await _focusable.FocusAsync();
@@ -190,7 +190,7 @@
             
             if (frameReady)
             {
-                await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+                await JS.InvokeVoidAsync("gbInterop.drawFrameRgba", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBufferRgba);
             }
 
             // Update audio if enabled
@@ -444,7 +444,7 @@
         _isInTestMode = true; // Pause emulation
         Emulator.CreateTestPattern();
         // Immediately update the canvas to show the test pattern
-        await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+        await JS.InvokeVoidAsync("gbInterop.drawFrameRgba", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBufferRgba);
     }
 
     private async Task CreateDirectTestPattern()
@@ -452,7 +452,7 @@
         _isInTestMode = true; // Pause emulation
         Emulator.CreateDirectTestPattern();
         // Immediately update the canvas to show the test pattern
-        await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+        await JS.InvokeVoidAsync("gbInterop.drawFrameRgba", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBufferRgba);
     }
 
     private void ShowDebugInfo()
