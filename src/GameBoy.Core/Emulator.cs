@@ -64,6 +64,63 @@ public sealed class Emulator
     }
 
     /// <summary>
+    /// Gets debugging information about the current emulator state.
+    /// </summary>
+    public string GetDebugInfo()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"CPU PC: 0x{_cpu.Regs.PC:X4}");
+        sb.AppendLine($"CPU AF: 0x{_cpu.Regs.AF:X4}");
+        sb.AppendLine($"CPU BC: 0x{_cpu.Regs.BC:X4}");
+        sb.AppendLine($"CPU DE: 0x{_cpu.Regs.DE:X4}");
+        sb.AppendLine($"CPU HL: 0x{_cpu.Regs.HL:X4}");
+        sb.AppendLine($"CPU SP: 0x{_cpu.Regs.SP:X4}");
+        sb.AppendLine($"CPU Halted: {_cpu.IsHalted}");
+        sb.AppendLine($"CPU IME: {_cpu.InterruptsEnabled}");
+        sb.AppendLine($"Cartridge: {(_mmu.Cartridge?.GetType().Name ?? "None")}");
+        sb.AppendLine($"ROM @ 0x0100: 0x{_mmu.ReadByte(0x0100):X2}");
+        sb.AppendLine($"ROM @ 0x0101: 0x{_mmu.ReadByte(0x0101):X2}");
+        sb.AppendLine($"ROM @ 0x0102: 0x{_mmu.ReadByte(0x0102):X2}");
+        sb.AppendLine($"ROM @ 0x0103: 0x{_mmu.ReadByte(0x0103):X2}");
+        
+        // Show current instruction being executed
+        if (_mmu.Cartridge != null)
+        {
+            sb.AppendLine($"Current Instr @ PC: 0x{_mmu.ReadByte(_cpu.Regs.PC):X2}");
+            sb.AppendLine($"Next Instr @ PC+1: 0x{_mmu.ReadByte((ushort)(_cpu.Regs.PC + 1)):X2}");
+        }
+        
+        sb.AppendLine($"LCDC: 0x{_mmu.ReadByte(IoRegs.LCDC):X2}");
+        sb.AppendLine($"BGP: 0x{_mmu.ReadByte(IoRegs.BGP):X2}");
+        sb.AppendLine($"SCX: 0x{_mmu.ReadByte(IoRegs.SCX):X2}");
+        sb.AppendLine($"SCY: 0x{_mmu.ReadByte(IoRegs.SCY):X2}");
+        sb.AppendLine($"LY: 0x{_mmu.ReadByte(IoRegs.LY):X2}");
+        sb.AppendLine($"IE: 0x{_mmu.ReadByte(0xFFFF):X2}");
+        sb.AppendLine($"IF: 0x{_mmu.ReadByte(IoRegs.IF):X2}");
+        
+        // Check if anything is in VRAM
+        bool vramEmpty = true;
+        for (int i = 0x8000; i < 0x9000 && vramEmpty; i++)
+        {
+            if (_mmu.ReadByte((ushort)i) != 0)
+                vramEmpty = false;
+        }
+        sb.AppendLine($"VRAM Empty: {vramEmpty}");
+        
+        // Check a few tile map bytes
+        sb.AppendLine($"Tile Map @ 0x9800: 0x{_mmu.ReadByte(0x9800):X2}");
+        sb.AppendLine($"Tile Map @ 0x9801: 0x{_mmu.ReadByte(0x9801):X2}");
+        sb.AppendLine($"Tile Map @ 0x9802: 0x{_mmu.ReadByte(0x9802):X2}");
+        
+        // Check first few bytes of tile 0x2F (which is in the tile map)
+        int tileAddr = 0x8000 + (0x2F * 16);
+        sb.AppendLine($"Tile 0x2F @ 0x{tileAddr:X4}: 0x{_mmu.ReadByte((ushort)tileAddr):X2}");
+        sb.AppendLine($"Tile 0x2F @ 0x{tileAddr+1:X4}: 0x{_mmu.ReadByte((ushort)(tileAddr+1)):X2}");
+        
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Creates a test pattern in VRAM to verify rendering pipeline.
     /// This method is for debugging purposes only.
     /// </summary>
