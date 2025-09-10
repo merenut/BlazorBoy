@@ -1,0 +1,234 @@
+@using GameBoy.Core.Debug
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Breakpoints (@(TotalBreakpoints))</h6>
+        <button class="btn btn-sm btn-outline-danger" @onclick="ClearAllBreakpoints" 
+                disabled="@(TotalBreakpoints == 0)">
+            Clear All
+        </button>
+    </div>
+    <div class="card-body">
+        <!-- Add New Breakpoint Section -->
+        <div class="border-bottom pb-3 mb-3">
+            <h6 class="mb-2">Add Breakpoint</h6>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">Address:</span>
+                        <input type="text" class="form-control font-monospace" 
+                               @bind="NewBreakpointAddress" @onkeypress="OnAddressKeyPress"
+                               placeholder="0x0000" maxlength="6">
+                        <button class="btn btn-success" @onclick="AddAddressBreakpoint">
+                            Add Execute BP
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-8">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">Condition:</span>
+                        <input type="text" class="form-control font-monospace" 
+                               @bind="NewConditionalExpression" @onkeypress="OnConditionalKeyPress"
+                               placeholder="e.g., A == 0x42 or PC == 0x0150">
+                        <button class="btn btn-warning" @onclick="AddConditionalBreakpoint" 
+                                disabled="@string.IsNullOrWhiteSpace(NewConditionalExpression)">
+                            Add Conditional BP
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Address Breakpoints -->
+        @if (Emulator?.Breakpoints.AddressBreakpoints.Count > 0)
+        {
+            <h6 class="mb-2">Address Breakpoints</h6>
+            <div class="list-group list-group-flush mb-3">
+                @foreach (var kvp in Emulator.Breakpoints.AddressBreakpoints)
+                {
+                    var breakpoint = kvp.Value;
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="form-check me-3">
+                                <input class="form-check-input" type="checkbox" 
+                                       checked="@breakpoint.Enabled"
+                                       @onchange="(e) => ToggleBreakpointEnabled(breakpoint.Address, (bool)e.Value!)">
+                            </div>
+                            <div>
+                                <span class="font-monospace fw-bold">0x@(breakpoint.Address.ToString("X4"))</span>
+                                <span class="badge bg-primary ms-2">@breakpoint.Type</span>
+                                @if (!string.IsNullOrEmpty(breakpoint.Description))
+                                {
+                                    <br><small class="text-muted">@breakpoint.Description</small>
+                                }
+                                @if (!breakpoint.Enabled)
+                                {
+                                    <span class="badge bg-secondary ms-2">DISABLED</span>
+                                }
+                            </div>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    @onclick="() => RemoveAddressBreakpoint(breakpoint.Address)">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Conditional Breakpoints -->
+        @if (Emulator?.Breakpoints.ConditionalBreakpoints.Count > 0)
+        {
+            <h6 class="mb-2">Conditional Breakpoints</h6>
+            <div class="list-group list-group-flush">
+                @foreach (var conditional in Emulator.Breakpoints.ConditionalBreakpoints)
+                {
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="form-check me-3">
+                                <input class="form-check-input" type="checkbox" 
+                                       checked="@conditional.Enabled"
+                                       @onchange="(e) => ToggleConditionalEnabled(conditional.Id, (bool)e.Value!)">
+                            </div>
+                            <div>
+                                <span class="font-monospace">@conditional.Expression</span>
+                                <span class="badge bg-warning ms-2">CONDITIONAL</span>
+                                @if (conditional.HitCount > 0)
+                                {
+                                    <span class="badge bg-info ms-1">@conditional.HitCount hits</span>
+                                }
+                                @if (!string.IsNullOrEmpty(conditional.Description))
+                                {
+                                    <br><small class="text-muted">@conditional.Description</small>
+                                }
+                                @if (!conditional.Enabled)
+                                {
+                                    <span class="badge bg-secondary ms-2">DISABLED</span>
+                                }
+                            </div>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    @onclick="() => RemoveConditionalBreakpoint(conditional.Id)">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (TotalBreakpoints == 0)
+        {
+            <div class="text-muted text-center py-3">
+                <p>No breakpoints set.</p>
+                <p><small>Add address or conditional breakpoints above to start debugging.</small></p>
+            </div>
+        }
+    </div>
+    <div class="card-footer">
+        <small class="text-muted">
+            <strong>Examples:</strong><br>
+            Address: 0x0150, 0x8000<br>
+            Conditional: A == 0x42, PC == 0x0150, (HL) == 0xC3, A == 0x10 && B == 0x20
+        </small>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IDebugController? Emulator { get; set; }
+
+    private string NewBreakpointAddress = "";
+    private string NewConditionalExpression = "";
+
+    private int TotalBreakpoints => 
+        (Emulator?.Breakpoints.AddressBreakpoints.Count ?? 0) + 
+        (Emulator?.Breakpoints.ConditionalBreakpoints.Count ?? 0);
+
+    private void AddAddressBreakpoint()
+    {
+        if (Emulator == null || string.IsNullOrWhiteSpace(NewBreakpointAddress)) return;
+
+        var input = NewBreakpointAddress.Trim();
+        if (input.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            input = input.Substring(2);
+        }
+
+        if (ushort.TryParse(input, System.Globalization.NumberStyles.HexNumber, null, out ushort address))
+        {
+            Emulator.Breakpoints.SetExecuteBreakpoint(address, $"User breakpoint at 0x{address:X4}");
+            NewBreakpointAddress = "";
+            StateHasChanged();
+        }
+    }
+
+    private void AddConditionalBreakpoint()
+    {
+        if (Emulator == null || string.IsNullOrWhiteSpace(NewConditionalExpression)) return;
+
+        Emulator.Breakpoints.AddConditional(NewConditionalExpression.Trim(), "User conditional breakpoint");
+        NewConditionalExpression = "";
+        StateHasChanged();
+    }
+
+    private void RemoveAddressBreakpoint(ushort address)
+    {
+        if (Emulator == null) return;
+
+        Emulator.Breakpoints.RemoveBreakpoint(address);
+        StateHasChanged();
+    }
+
+    private void RemoveConditionalBreakpoint(Guid id)
+    {
+        if (Emulator == null) return;
+
+        Emulator.Breakpoints.RemoveConditional(id);
+        StateHasChanged();
+    }
+
+    private void ToggleBreakpointEnabled(ushort address, bool enabled)
+    {
+        if (Emulator == null) return;
+
+        Emulator.Breakpoints.SetBreakpointEnabled(address, enabled);
+        StateHasChanged();
+    }
+
+    private void ToggleConditionalEnabled(Guid id, bool enabled)
+    {
+        if (Emulator == null) return;
+
+        Emulator.Breakpoints.SetConditionalEnabled(id, enabled);
+        StateHasChanged();
+    }
+
+    private void ClearAllBreakpoints()
+    {
+        if (Emulator == null) return;
+
+        Emulator.Breakpoints.ClearAll();
+        StateHasChanged();
+    }
+
+    private void OnAddressKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            AddAddressBreakpoint();
+        }
+    }
+
+    private void OnConditionalKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            AddConditionalBreakpoint();
+        }
+    }
+}

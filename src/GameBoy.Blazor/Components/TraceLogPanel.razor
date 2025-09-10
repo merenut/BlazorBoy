@@ -1,0 +1,207 @@
+@using GameBoy.Core.Debug
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Trace Log (@(TraceEntries?.Count ?? 0)/@(Emulator?.TraceLogger.Capacity ?? 0))</h6>
+        <div class="btn-group btn-group-sm">
+            <button class="btn @(Emulator?.TraceLogger.Enabled == true ? "btn-success" : "btn-outline-secondary")" 
+                    @onclick="ToggleTracing">
+                @(Emulator?.TraceLogger.Enabled == true ? "Stop" : "Start") Trace
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="RefreshTrace">
+                <i class="fas fa-sync"></i>
+            </button>
+            <button class="btn btn-outline-warning" @onclick="ClearTrace" 
+                    disabled="@(TraceEntries?.Count == 0)">
+                Clear
+            </button>
+            <button class="btn btn-outline-primary" @onclick="ExportTrace" 
+                    disabled="@(TraceEntries?.Count == 0)">
+                Export
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="trace-container" style="height: 400px; overflow-y: auto;">
+            @if (TraceEntries != null && TraceEntries.Count > 0)
+            {
+                <table class="table table-sm table-striped mb-0 font-monospace" style="font-size: 0.75em;">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th style="width: 100px;">Cycles</th>
+                            <th style="width: 60px;">PC</th>
+                            <th style="width: 40px;">OP</th>
+                            <th style="width: 60px;">AF</th>
+                            <th style="width: 60px;">BC</th>
+                            <th style="width: 60px;">DE</th>
+                            <th style="width: 60px;">HL</th>
+                            <th style="width: 60px;">SP</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in TraceEntries.Reverse())
+                        {
+                            var isCurrentPC = Emulator?.CaptureState().Cpu.PC == entry.PC;
+                            <tr class="@(isCurrentPC ? "table-warning" : "")">
+                                <td class="text-end">@entry.CycleCount</td>
+                                <td>@entry.PC.ToString("X4")</td>
+                                <td>@entry.Opcode.ToString("X2")</td>
+                                <td>@entry.AF.ToString("X4")</td>
+                                <td>@entry.BC.ToString("X4")</td>
+                                <td>@entry.DE.ToString("X4")</td>
+                                <td>@entry.HL.ToString("X4")</td>
+                                <td>@entry.SP.ToString("X4")</td>
+                                <td class="text-muted small">@entry.Timestamp.ToString("HH:mm:ss.fff")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="p-3 text-muted text-center">
+                    <p>No trace entries available.</p>
+                    @if (Emulator?.TraceLogger.Enabled != true)
+                    {
+                        <p><small>Click "Start Trace" to begin logging CPU execution.</small></p>
+                    }
+                    else
+                    {
+                        <p><small>Tracing is enabled. Execute some instructions to see entries.</small></p>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+    <div class="card-footer">
+        <div class="row">
+            <div class="col-md-6">
+                <small class="text-muted">
+                    <strong>Status:</strong> 
+                    @if (Emulator?.TraceLogger.Enabled == true)
+                    {
+                        <span class="text-success">Tracing Active</span>
+                    }
+                    else
+                    {
+                        <span class="text-secondary">Tracing Stopped</span>
+                    }
+                    | Total Entries: @(Emulator?.TraceLogger.TotalEntries ?? 0)
+                </small>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="input-group input-group-sm" style="width: 200px; display: inline-flex;">
+                    <span class="input-group-text">Show:</span>
+                    <select class="form-select" @bind="MaxEntriesToShow" @bind:after="RefreshTrace">
+                        <option value="50">50 entries</option>
+                        <option value="100">100 entries</option>
+                        <option value="200">200 entries</option>
+                        <option value="500">500 entries</option>
+                        <option value="-1">All entries</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (ShowExportModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Export Trace Log</h5>
+                    <button type="button" class="btn-close" @onclick="CloseExportModal"></button>
+                </div>
+                <div class="modal-body">
+                    <textarea class="form-control font-monospace" 
+                              style="height: 400px; font-size: 0.8em;"
+                              readonly>@ExportedText</textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="CopyToClipboard">
+                        Copy to Clipboard
+                    </button>
+                    <button class="btn btn-secondary" @onclick="CloseExportModal">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public IDebugController? Emulator { get; set; }
+
+    private IReadOnlyList<TraceEntry>? TraceEntries;
+    private int MaxEntriesToShow = 100;
+    private bool ShowExportModal = false;
+    private string ExportedText = "";
+
+    protected override void OnParametersSet()
+    {
+        RefreshTrace();
+    }
+
+    private void RefreshTrace()
+    {
+        if (Emulator?.TraceLogger == null)
+        {
+            TraceEntries = null;
+            return;
+        }
+
+        TraceEntries = Emulator.TraceLogger.Snapshot(MaxEntriesToShow > 0 ? MaxEntriesToShow : -1);
+    }
+
+    private void ToggleTracing()
+    {
+        if (Emulator?.TraceLogger == null) return;
+
+        Emulator.TraceLogger.Enabled = !Emulator.TraceLogger.Enabled;
+        StateHasChanged();
+    }
+
+    private void ClearTrace()
+    {
+        if (Emulator?.TraceLogger == null) return;
+
+        Emulator.TraceLogger.Clear();
+        RefreshTrace();
+        StateHasChanged();
+    }
+
+    private void ExportTrace()
+    {
+        if (Emulator?.TraceLogger == null) return;
+
+        ExportedText = Emulator.TraceLogger.ExportAsText(MaxEntriesToShow > 0 ? MaxEntriesToShow : 1000);
+        ShowExportModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseExportModal()
+    {
+        ShowExportModal = false;
+        ExportedText = "";
+        StateHasChanged();
+    }
+
+    private async Task CopyToClipboard()
+    {
+        try
+        {
+            // Note: This requires JavaScript interop for clipboard access
+            // For now, just close the modal - user can manually copy
+            await Task.Delay(100); // Simulate async operation
+            CloseExportModal();
+        }
+        catch
+        {
+            // Clipboard access might not be available
+        }
+    }
+}

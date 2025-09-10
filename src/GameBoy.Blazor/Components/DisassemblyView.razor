@@ -1,0 +1,198 @@
+@using GameBoy.Core.Debug
+@using GameBoy.Core
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Disassembly</h6>
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" @onclick="NavigateUp" disabled="@(CurrentAddress == 0)">
+                <i class="fas fa-chevron-up"></i>
+            </button>
+            <button class="btn btn-outline-primary" @onclick="NavigateDown" disabled="@(CurrentAddress >= 0xFFF0)">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="GoToPC" disabled="@(DebugState == null)">
+                Go to PC
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="disassembly-container" style="height: 400px; overflow-y: auto;">
+            @if (DisassemblyLines != null && DisassemblyLines.Count > 0)
+            {
+                <table class="table table-sm table-striped mb-0 font-monospace" style="font-size: 0.85em;">
+                    <tbody>
+                        @foreach (var line in DisassemblyLines)
+                        {
+                            var isCurrentPC = DebugState?.Cpu.PC == line.Address;
+                            var hasBreakpoint = Emulator?.Breakpoints.AddressBreakpoints.ContainsKey(line.Address) == true;
+                            
+                            <tr class="@(isCurrentPC ? "table-warning" : "")" 
+                                style="@(hasBreakpoint ? "border-left: 4px solid red;" : "")">
+                                <td class="text-end" style="width: 80px;">
+                                    @if (hasBreakpoint)
+                                    {
+                                        <i class="fas fa-circle text-danger me-1"></i>
+                                    }
+                                    0x@(line.Address.ToString("X4"))
+                                </td>
+                                <td style="width: 100px;">
+                                    @line.GetBytesString()
+                                </td>
+                                <td class="@(line.IsValid ? "" : "text-danger")">
+                                    @if (string.IsNullOrEmpty(line.Operands))
+                                    {
+                                        @line.Mnemonic
+                                    }
+                                    else
+                                    {
+                                        <span>@line.Mnemonic <span class="text-primary">@line.Operands</span></span>
+                                    }
+                                    @if (isCurrentPC)
+                                    {
+                                        <i class="fas fa-arrow-left text-warning ms-2"></i>
+                                    }
+                                </td>
+                                <td style="width: 40px;">
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            @onclick="() => ToggleBreakpoint(line.Address)"
+                                            title="@(hasBreakpoint ? "Remove breakpoint" : "Add breakpoint")">
+                                        <i class="fas @(hasBreakpoint ? "fa-minus" : "fa-plus")"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="p-3 text-muted">
+                    <p>No ROM loaded or unable to disassemble.</p>
+                    <p>Load a ROM file to view disassembly.</p>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="card-footer">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Go to:</span>
+                    <input type="text" class="form-control font-monospace" 
+                           @bind="AddressInput" @onkeypress="OnAddressKeyPress"
+                           placeholder="0x0000" maxlength="6">
+                    <button class="btn btn-primary" @onclick="GoToAddress">Go</button>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <small class="text-muted">
+                    Showing @(DisassemblyLines?.Count ?? 0) lines from 0x@(CurrentAddress.ToString("X4"))
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IDebugController? Emulator { get; set; }
+    [Parameter] public DebugState? DebugState { get; set; }
+
+    private ushort CurrentAddress = 0x0000;
+    private string AddressInput = "";
+    private IReadOnlyList<DisassemblyLine>? DisassemblyLines;
+    private const int LinesPerPage = 20;
+
+    protected override void OnParametersSet()
+    {
+        RefreshDisassembly();
+    }
+
+    private void RefreshDisassembly()
+    {
+        if (Emulator == null) 
+        {
+            DisassemblyLines = null;
+            return;
+        }
+
+        try
+        {
+            var memoryReader = new MmuMemoryReader(Emulator.Mmu);
+            DisassemblyLines = Disassembler.DisassembleRange(CurrentAddress, LinesPerPage, memoryReader);
+        }
+        catch
+        {
+            DisassemblyLines = null;
+        }
+    }
+
+    private void NavigateUp()
+    {
+        if (CurrentAddress >= 0x0010)
+        {
+            CurrentAddress = (ushort)(CurrentAddress - 0x0010);
+            RefreshDisassembly();
+        }
+    }
+
+    private void NavigateDown()
+    {
+        if (CurrentAddress <= 0xFFF0)
+        {
+            CurrentAddress = (ushort)(CurrentAddress + 0x0010);
+            RefreshDisassembly();
+        }
+    }
+
+    private void GoToPC()
+    {
+        if (DebugState != null)
+        {
+            CurrentAddress = DebugState.Value.Cpu.PC;
+            RefreshDisassembly();
+        }
+    }
+
+    private void GoToAddress()
+    {
+        if (string.IsNullOrWhiteSpace(AddressInput)) return;
+
+        var input = AddressInput.Trim();
+        if (input.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            input = input.Substring(2);
+        }
+
+        if (ushort.TryParse(input, System.Globalization.NumberStyles.HexNumber, null, out ushort address))
+        {
+            CurrentAddress = address;
+            RefreshDisassembly();
+            AddressInput = "";
+        }
+    }
+
+    private void OnAddressKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            GoToAddress();
+        }
+    }
+
+    private void ToggleBreakpoint(ushort address)
+    {
+        if (Emulator == null) return;
+
+        if (Emulator.Breakpoints.AddressBreakpoints.ContainsKey(address))
+        {
+            Emulator.Breakpoints.RemoveBreakpoint(address);
+        }
+        else
+        {
+            Emulator.Breakpoints.SetExecuteBreakpoint(address, $"User breakpoint at 0x{address:X4}");
+        }
+
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,206 @@
+@using GameBoy.Core.Debug
+
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">PPU State</h6>
+    </div>
+    <div class="card-body">
+        @if (PpuState != null)
+        {
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="mb-2">LCD Control (LCDC)</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="fw-bold">LCDC:</td>
+                            <td class="font-monospace">0x@(PpuState.Value.LCDC.ToString("X2"))</td>
+                        </tr>
+                        <tr>
+                            <td>LCD Enabled:</td>
+                            <td class="@(PpuState.Value.LcdEnabled ? "text-success" : "text-danger")">
+                                @(PpuState.Value.LcdEnabled ? "ON" : "OFF")
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Window Enabled:</td>
+                            <td class="@(PpuState.Value.WindowEnabled ? "text-success" : "text-muted")">
+                                @(PpuState.Value.WindowEnabled ? "ON" : "OFF")
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Sprites Enabled:</td>
+                            <td class="@(PpuState.Value.SpritesEnabled ? "text-success" : "text-muted")">
+                                @(PpuState.Value.SpritesEnabled ? "ON" : "OFF")
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Background Enabled:</td>
+                            <td class="@(PpuState.Value.BackgroundEnabled ? "text-success" : "text-muted")">
+                                @(PpuState.Value.BackgroundEnabled ? "ON" : "OFF")
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="mb-2">Status & Position</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="fw-bold">STAT:</td>
+                            <td class="font-monospace">0x@(PpuState.Value.STAT.ToString("X2"))</td>
+                        </tr>
+                        <tr>
+                            <td>Mode:</td>
+                            <td class="@GetModeColor(PpuState.Value.Mode)">
+                                @GetModeText(PpuState.Value.Mode)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">LY:</td>
+                            <td class="font-monospace">@PpuState.Value.LY (0x@(PpuState.Value.LY.ToString("X2")))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">LYC:</td>
+                            <td class="font-monospace">@PpuState.Value.LYC (0x@(PpuState.Value.LYC.ToString("X2")))</td>
+                        </tr>
+                        <tr>
+                            <td>LY=LYC:</td>
+                            <td class="@(PpuState.Value.LY == PpuState.Value.LYC ? "text-success" : "text-muted")">
+                                @(PpuState.Value.LY == PpuState.Value.LYC ? "MATCH" : "NO MATCH")
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <h6 class="mb-2">Scroll Position</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="fw-bold">SCX:</td>
+                            <td class="font-monospace">@PpuState.Value.SCX (0x@(PpuState.Value.SCX.ToString("X2")))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">SCY:</td>
+                            <td class="font-monospace">@PpuState.Value.SCY (0x@(PpuState.Value.SCY.ToString("X2")))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">WX:</td>
+                            <td class="font-monospace">@PpuState.Value.WX (0x@(PpuState.Value.WX.ToString("X2")))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">WY:</td>
+                            <td class="font-monospace">@PpuState.Value.WY (0x@(PpuState.Value.WY.ToString("X2")))</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="mb-2">Palettes</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="fw-bold">BGP:</td>
+                            <td class="font-monospace">0x@(PpuState.Value.BGP.ToString("X2"))</td>
+                        </tr>
+                        <tr>
+                            <td>BG Colors:</td>
+                            <td>
+                                @for (int i = 0; i < 4; i++)
+                                {
+                                    var color = (PpuState.Value.BGP >> (i * 2)) & 0x03;
+                                    var grayShade = GetGrayShade(color);
+                                    <span class="me-1 px-1 border" style="background-color: @grayShade; color: @(color >= 2 ? "white" : "black");">
+                                        @color
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">OBP0:</td>
+                            <td class="font-monospace">0x@(PpuState.Value.OBP0.ToString("X2"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">OBP1:</td>
+                            <td class="font-monospace">0x@(PpuState.Value.OBP1.ToString("X2"))</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar @GetModeProgressColor(PpuState.Value.Mode)" 
+                             style="width: @GetScanlineProgress(PpuState.Value.LY)%"
+                             title="Scanline @PpuState.Value.LY of 153">
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        Scanline Progress: @PpuState.Value.LY / 153 
+                        (@(PpuState.Value.LY < 144 ? "Visible" : "VBlank"))
+                    </small>
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">No PPU state available</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public PpuState? PpuState { get; set; }
+
+    private string GetModeText(int mode)
+    {
+        return mode switch
+        {
+            0 => "HBlank",
+            1 => "VBlank", 
+            2 => "OAM Scan",
+            3 => "Drawing",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetModeColor(int mode)
+    {
+        return mode switch
+        {
+            0 => "text-success",  // HBlank
+            1 => "text-primary",  // VBlank
+            2 => "text-warning",  // OAM Scan
+            3 => "text-danger",   // Drawing
+            _ => "text-muted"
+        };
+    }
+
+    private string GetModeProgressColor(int mode)
+    {
+        return mode switch
+        {
+            0 => "bg-success",  // HBlank
+            1 => "bg-primary",  // VBlank
+            2 => "bg-warning",  // OAM Scan
+            3 => "bg-danger",   // Drawing
+            _ => "bg-secondary"
+        };
+    }
+
+    private double GetScanlineProgress(byte ly)
+    {
+        return Math.Min(100.0, (ly / 153.0) * 100.0);
+    }
+
+    private string GetGrayShade(int colorIndex)
+    {
+        return colorIndex switch
+        {
+            0 => "#FFFFFF", // White
+            1 => "#AAAAAA", // Light gray
+            2 => "#555555", // Dark gray
+            3 => "#000000", // Black
+            _ => "#CCCCCC"
+        };
+    }
+}

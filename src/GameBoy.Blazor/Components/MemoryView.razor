@@ -1,0 +1,305 @@
+@using GameBoy.Core.Debug
+@using GameBoy.Core
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Memory Viewer</h6>
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" @onclick="NavigateUp" disabled="@(CurrentAddress == 0)">
+                <i class="fas fa-chevron-up"></i>
+            </button>
+            <button class="btn btn-outline-primary" @onclick="NavigateDown" disabled="@(CurrentAddress >= 0xFF00)">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="RefreshMemory">
+                <i class="fas fa-sync"></i>
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="memory-container" style="height: 400px; overflow-y: auto;">
+            @if (MemoryData != null && MemoryData.Length > 0)
+            {
+                <table class="table table-sm mb-0 font-monospace" style="font-size: 0.8em;">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">Address</th>
+                            @for (int i = 0; i < 16; i++)
+                            {
+                                <th style="width: 30px; text-align: center;">@i.ToString("X")</th>
+                            }
+                            <th style="width: 150px;">ASCII</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int row = 0; row < MemoryData.Length / 16; row++)
+                        {
+                            var rowAddress = (ushort)(CurrentAddress + (row * 16));
+                            <tr>
+                                <td class="text-end fw-bold">0x@(rowAddress.ToString("X4"))</td>
+                                @for (int col = 0; col < 16; col++)
+                                {
+                                    var byteIndex = row * 16 + col;
+                                    if (byteIndex < MemoryData.Length)
+                                    {
+                                        var byteValue = MemoryData[byteIndex];
+                                        var byteAddress = (ushort)(rowAddress + col);
+                                        
+                                        <td class="text-center @(GetByteStyle(byteAddress))" 
+                                            @onclick="() => SelectByte(byteAddress)"
+                                            style="cursor: pointer;">
+                                            @if (EditingAddress == byteAddress)
+                                            {
+                                                <input type="text" class="form-control form-control-sm text-center font-monospace"
+                                                       style="width: 25px; height: 20px; padding: 0; font-size: 0.75em;"
+                                                       @bind="EditValue" @onblur="FinishEdit" @onkeypress="OnEditKeyPress"
+                                                       maxlength="2" />
+                                            }
+                                            else
+                                            {
+                                                @byteValue.ToString("X2")
+                                            }
+                                        </td>
+                                    }
+                                    else
+                                    {
+                                        <td></td>
+                                    }
+                                }
+                                <td class="text-muted">
+                                    @for (int col = 0; col < 16; col++)
+                                    {
+                                        var byteIndex = row * 16 + col;
+                                        if (byteIndex < MemoryData.Length)
+                                        {
+                                            var byteValue = MemoryData[byteIndex];
+                                            var asciiChar = (byteValue >= 32 && byteValue <= 126) ? (char)byteValue : '.';
+                                            <span>@asciiChar</span>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="p-3 text-muted">
+                    <p>No memory data available.</p>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="card-footer">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Go to:</span>
+                    <input type="text" class="form-control font-monospace" 
+                           @bind="AddressInput" @onkeypress="OnAddressKeyPress"
+                           placeholder="0x0000" maxlength="6">
+                    <button class="btn btn-primary" @onclick="GoToAddress">Go</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="btn-group btn-group-sm w-100">
+                    <button class="btn @(IsMemoryRegion("ROM") ? "btn-primary" : "btn-outline-primary")" @onclick="() => GoToRegion(0x0000)">ROM</button>
+                    <button class="btn @(IsMemoryRegion("VRAM") ? "btn-primary" : "btn-outline-primary")" @onclick="() => GoToRegion(0x8000)">VRAM</button>
+                    <button class="btn @(IsMemoryRegion("WRAM") ? "btn-primary" : "btn-outline-primary")" @onclick="() => GoToRegion(0xC000)">WRAM</button>
+                    <button class="btn @(IsMemoryRegion("IO") ? "btn-primary" : "btn-outline-primary")" @onclick="() => GoToRegion(0xFF00)">I/O</button>
+                    <button class="btn @(IsMemoryRegion("HRAM") ? "btn-primary" : "btn-outline-primary")" @onclick="() => GoToRegion(0xFF80)">HRAM</button>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <small class="text-muted">
+                    Showing @(MemoryData?.Length ?? 0) bytes from 0x@(CurrentAddress.ToString("X4")) - 
+                    @GetMemoryRegionName(CurrentAddress) | 
+                    @if (SelectedAddress.HasValue)
+                    {
+                        <span>Selected: 0x@(SelectedAddress.Value.ToString("X4")) = 0x@(GetByteAt(SelectedAddress.Value).ToString("X2"))</span>
+                    }
+                    else
+                    {
+                        <span>Click on a byte to edit</span>
+                    }
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IDebugController? Emulator { get; set; }
+
+    private ushort CurrentAddress = 0x0000;
+    private string AddressInput = "";
+    private byte[]? MemoryData;
+    private ushort? SelectedAddress;
+    private ushort? EditingAddress;
+    private string EditValue = "";
+    private const int BytesPerPage = 256; // 16 rows of 16 bytes
+
+    protected override void OnParametersSet()
+    {
+        RefreshMemory();
+    }
+
+    private void RefreshMemory()
+    {
+        if (Emulator == null)
+        {
+            MemoryData = null;
+            return;
+        }
+
+        try
+        {
+            var memoryBlock = Emulator.ReadMemory(CurrentAddress, BytesPerPage);
+            MemoryData = memoryBlock.Data;
+        }
+        catch
+        {
+            MemoryData = null;
+        }
+    }
+
+    private void NavigateUp()
+    {
+        if (CurrentAddress >= BytesPerPage)
+        {
+            CurrentAddress = (ushort)(CurrentAddress - BytesPerPage);
+            RefreshMemory();
+        }
+    }
+
+    private void NavigateDown()
+    {
+        if (CurrentAddress <= 0xFFFF - BytesPerPage)
+        {
+            CurrentAddress = (ushort)(CurrentAddress + BytesPerPage);
+            RefreshMemory();
+        }
+    }
+
+    private void GoToAddress()
+    {
+        if (string.IsNullOrWhiteSpace(AddressInput)) return;
+
+        var input = AddressInput.Trim();
+        if (input.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            input = input.Substring(2);
+        }
+
+        if (ushort.TryParse(input, System.Globalization.NumberStyles.HexNumber, null, out ushort address))
+        {
+            CurrentAddress = (ushort)(address & 0xFFF0); // Align to 16-byte boundary
+            RefreshMemory();
+            AddressInput = "";
+        }
+    }
+
+    private void GoToRegion(ushort address)
+    {
+        CurrentAddress = address;
+        RefreshMemory();
+    }
+
+    private void OnAddressKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            GoToAddress();
+        }
+    }
+
+    private void SelectByte(ushort address)
+    {
+        SelectedAddress = address;
+        EditingAddress = address;
+        EditValue = GetByteAt(address).ToString("X2");
+        StateHasChanged();
+    }
+
+    private void FinishEdit()
+    {
+        if (EditingAddress.HasValue && !string.IsNullOrWhiteSpace(EditValue))
+        {
+            if (byte.TryParse(EditValue, System.Globalization.NumberStyles.HexNumber, null, out byte value))
+            {
+                try
+                {
+                    Emulator?.WriteMemory(EditingAddress.Value, value);
+                    RefreshMemory();
+                }
+                catch
+                {
+                    // Write failed, ignore
+                }
+            }
+        }
+        EditingAddress = null;
+        EditValue = "";
+    }
+
+    private void OnEditKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            FinishEdit();
+        }
+        else if (e.Key == "Escape")
+        {
+            EditingAddress = null;
+            EditValue = "";
+        }
+    }
+
+    private byte GetByteAt(ushort address)
+    {
+        if (MemoryData == null) return 0;
+        var offset = address - CurrentAddress;
+        return offset >= 0 && offset < MemoryData.Length ? MemoryData[offset] : (byte)0;
+    }
+
+    private string GetByteStyle(ushort address)
+    {
+        if (SelectedAddress == address) return "bg-primary text-white";
+        if (EditingAddress == address) return "bg-warning";
+        return "";
+    }
+
+    private string GetMemoryRegionName(ushort address)
+    {
+        return address switch
+        {
+            < 0x8000 => "ROM",
+            < 0xA000 => "VRAM",
+            < 0xC000 => "External RAM",
+            < 0xE000 => "Work RAM",
+            < 0xFE00 => "Echo RAM",
+            < 0xFEA0 => "OAM",
+            < 0xFF00 => "Unusable",
+            < 0xFF80 => "I/O Registers",
+            < 0xFFFF => "High RAM",
+            _ => "IE Register"
+        };
+    }
+
+    private bool IsMemoryRegion(string region)
+    {
+        var currentRegion = GetMemoryRegionName(CurrentAddress);
+        return region switch
+        {
+            "ROM" => currentRegion == "ROM",
+            "VRAM" => currentRegion == "VRAM",
+            "WRAM" => currentRegion == "Work RAM" || currentRegion == "Echo RAM",
+            "IO" => currentRegion == "I/O Registers",
+            "HRAM" => currentRegion == "High RAM",
+            _ => false
+        };
+    }
+}

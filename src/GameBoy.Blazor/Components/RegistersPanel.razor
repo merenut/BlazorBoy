@@ -1,0 +1,114 @@
+@using GameBoy.Core.Debug
+
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">CPU Registers</h6>
+    </div>
+    <div class="card-body">
+        @if (CpuState != null)
+        {
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="fw-bold">PC:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.PC.ToString("X4"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">SP:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.SP.ToString("X4"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">AF:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.AF.ToString("X4"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">BC:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.BC.ToString("X4"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">DE:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.DE.ToString("X4"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">HL:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.HL.ToString("X4"))</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="fw-bold">A:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.A.ToString("X2"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">B:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.B.ToString("X2"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">C:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.C.ToString("X2"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">D:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.D.ToString("X2"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">E:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.E.ToString("X2"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">H:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.H.ToString("X2"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">L:</td>
+                            <td class="font-monospace">0x@(CpuState.Value.L.ToString("X2"))</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-12">
+                    <h6 class="mb-2">Flags (F register)</h6>
+                    <div class="d-flex gap-3">
+                        <span class="@(CpuState.Value.FlagZ ? "text-success" : "text-muted")">
+                            Z: @(CpuState.Value.FlagZ ? "1" : "0")
+                        </span>
+                        <span class="@(CpuState.Value.FlagN ? "text-success" : "text-muted")">
+                            N: @(CpuState.Value.FlagN ? "1" : "0")
+                        </span>
+                        <span class="@(CpuState.Value.FlagH ? "text-success" : "text-muted")">
+                            H: @(CpuState.Value.FlagH ? "1" : "0")
+                        </span>
+                        <span class="@(CpuState.Value.FlagC ? "text-success" : "text-muted")">
+                            C: @(CpuState.Value.FlagC ? "1" : "0")
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-12">
+                    <h6 class="mb-2">Status</h6>
+                    <div class="d-flex gap-3">
+                        <span class="@(CpuState.Value.InterruptsEnabled ? "text-success" : "text-warning")">
+                            IME: @(CpuState.Value.InterruptsEnabled ? "ON" : "OFF")
+                        </span>
+                        <span class="@(CpuState.Value.IsHalted ? "text-warning" : "text-success")">
+                            @(CpuState.Value.IsHalted ? "HALTED" : "RUNNING")
+                        </span>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">No CPU state available</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public CpuState? CpuState { get; set; }
+}
