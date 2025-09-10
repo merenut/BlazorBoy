@@ -82,14 +82,14 @@ public sealed class Emulator
         sb.AppendLine($"ROM @ 0x0101: 0x{_mmu.ReadByte(0x0101):X2}");
         sb.AppendLine($"ROM @ 0x0102: 0x{_mmu.ReadByte(0x0102):X2}");
         sb.AppendLine($"ROM @ 0x0103: 0x{_mmu.ReadByte(0x0103):X2}");
-        
+
         // Show current instruction being executed
         if (_mmu.Cartridge != null)
         {
             sb.AppendLine($"Current Instr @ PC: 0x{_mmu.ReadByte(_cpu.Regs.PC):X2}");
             sb.AppendLine($"Next Instr @ PC+1: 0x{_mmu.ReadByte((ushort)(_cpu.Regs.PC + 1)):X2}");
         }
-        
+
         sb.AppendLine($"LCDC: 0x{_mmu.ReadByte(IoRegs.LCDC):X2}");
         sb.AppendLine($"BGP: 0x{_mmu.ReadByte(IoRegs.BGP):X2}");
         sb.AppendLine($"SCX: 0x{_mmu.ReadByte(IoRegs.SCX):X2}");
@@ -97,7 +97,7 @@ public sealed class Emulator
         sb.AppendLine($"LY: 0x{_mmu.ReadByte(IoRegs.LY):X2}");
         sb.AppendLine($"IE: 0x{_mmu.ReadByte(0xFFFF):X2}");
         sb.AppendLine($"IF: 0x{_mmu.ReadByte(IoRegs.IF):X2}");
-        
+
         // Check if anything is in VRAM
         bool vramEmpty = true;
         for (int i = 0x8000; i < 0x9000 && vramEmpty; i++)
@@ -106,17 +106,17 @@ public sealed class Emulator
                 vramEmpty = false;
         }
         sb.AppendLine($"VRAM Empty: {vramEmpty}");
-        
+
         // Check a few tile map bytes
         sb.AppendLine($"Tile Map @ 0x9800: 0x{_mmu.ReadByte(0x9800):X2}");
         sb.AppendLine($"Tile Map @ 0x9801: 0x{_mmu.ReadByte(0x9801):X2}");
         sb.AppendLine($"Tile Map @ 0x9802: 0x{_mmu.ReadByte(0x9802):X2}");
-        
+
         // Check first few bytes of tile 0x2F (which is in the tile map)
         int tileAddr = 0x8000 + (0x2F * 16);
         sb.AppendLine($"Tile 0x2F @ 0x{tileAddr:X4}: 0x{_mmu.ReadByte((ushort)tileAddr):X2}");
-        sb.AppendLine($"Tile 0x2F @ 0x{tileAddr+1:X4}: 0x{_mmu.ReadByte((ushort)(tileAddr+1)):X2}");
-        
+        sb.AppendLine($"Tile 0x2F @ 0x{tileAddr + 1:X4}: 0x{_mmu.ReadByte((ushort)(tileAddr + 1)):X2}");
+
         return sb.ToString();
     }
 
@@ -129,7 +129,7 @@ public sealed class Emulator
         // Ensure LCD and background are enabled for rendering
         _mmu.WriteByte(IoRegs.LCDC, 0x91); // LCD enable + BG enable + 8x8 sprites + BG tile map at 0x9800 + BG tile data at 0x8000
         _mmu.WriteByte(IoRegs.BGP, 0xE4);  // Background palette: 11,10,01,00 (dark to light)
-        
+
         // Create a simple checkerboard pattern in tile 0
         // Tile 0 starts at VRAM address 0x8000
 
