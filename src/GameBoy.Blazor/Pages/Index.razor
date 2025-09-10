@@ -12,6 +12,17 @@
     <div class="col-auto align-self-center">
         <span>FPS: @(_lastFps.ToString("0.0"))</span>
     </div>
+    <div class="col-auto align-self-center">
+        <button class="btn btn-sm @(_audioEnabled ? "btn-success" : "btn-outline-secondary")" @onclick="ToggleAudio">
+            @(_audioEnabled ? "🔊 Audio On" : "🔇 Audio Off")
+        </button>
+    </div>
+    <div class="col-auto align-self-center">
+        <label class="form-label mb-0 me-2">Volume:</label>
+        <input type="range" class="form-range" style="width: 100px;" min="0" max="100" 
+               value="@((int)(_audioVolume * 100))" @oninput="OnVolumeChanged" />
+        <small class="text-muted">@((int)(_audioVolume * 100))%</small>
+    </div>
     <div class="col-auto">
         <small class="text-muted">Debug:</small>
         <button class="btn btn-sm btn-outline-secondary" @onclick="CreateTestPattern">Test VRAM</button>
@@ -40,6 +51,8 @@
     private bool _isInTestMode = false;
     private bool _showDebugInfo = false;
     private string _debugInfo = "";
+    private bool _audioEnabled = false;
+    private double _audioVolume = 0.5;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -77,10 +90,32 @@
             {
                 await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
             }
+
+            // Update audio if enabled
+            if (_audioEnabled)
+            {
+                await UpdateAudioBuffer();
+            }
         }
         
         StateHasChanged();
         return true; // continue loop
+    }
+
+    private async Task UpdateAudioBuffer()
+    {
+        try
+        {
+            var samples = Emulator.Apu.PullSamples();
+            if (samples.Length > 0)
+            {
+                await JS.InvokeVoidAsync("gbInterop.updateAudioBuffer", samples);
+            }
+        }
+        catch (JSException)
+        {
+            // Audio might not be initialized yet - this is normal
+        }
     }
 
     
@@ -139,5 +174,35 @@
     {
         _debugInfo = Emulator.GetDebugInfo();
         _showDebugInfo = !_showDebugInfo;
+    }
+
+    private async Task ToggleAudio()
+    {
+        if (_audioEnabled)
+        {
+            _audioEnabled = false;
+            await JS.InvokeVoidAsync("gbInterop.disableAudio");
+        }
+        else
+        {
+            bool success = await JS.InvokeAsync<bool>("gbInterop.enableAudio");
+            if (success)
+            {
+                _audioEnabled = true;
+                await JS.InvokeVoidAsync("gbInterop.setAudioVolume", _audioVolume);
+            }
+        }
+    }
+
+    private async Task OnVolumeChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double volume))
+        {
+            _audioVolume = volume / 100.0;
+            if (_audioEnabled)
+            {
+                await JS.InvokeVoidAsync("gbInterop.setAudioVolume", _audioVolume);
+            }
+        }
     }
 }

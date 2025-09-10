@@ -14,6 +14,7 @@ public sealed class Emulator
     private readonly Ppu _ppu;
     private readonly Timer _timer;
     private readonly Serial _serial;
+    private readonly Apu _apu;
 
     private int _cycleAccumulator = 0;
 
@@ -25,6 +26,7 @@ public sealed class Emulator
     public Timer Timer => _timer;
     public InterruptController InterruptController => _mmu.InterruptController;
     public Serial Serial => _serial;
+    public Apu Apu => _apu;
 
     public Emulator()
     {
@@ -35,11 +37,13 @@ public sealed class Emulator
         _ppu = new Ppu(_mmu.InterruptController);
         _timer = new Timer(_mmu.InterruptController);
         _serial = new Serial(_mmu.InterruptController);
+        _apu = new Apu();
         Joypad = new Joypad(_mmu.InterruptController);
 
         // Connect timer and PPU to MMU for I/O register coordination
         _mmu.Timer = _timer;
         _mmu.Ppu = _ppu;
+        _mmu.Apu = _apu;
         _mmu.Joypad = Joypad;
         _ppu.Mmu = _mmu;
     }
@@ -52,6 +56,7 @@ public sealed class Emulator
         _mmu.Reset();
         _cpu.Reset();
         _ppu.Reset();
+        _apu.Reset();
     }
 
     /// <summary>
@@ -258,6 +263,7 @@ public sealed class Emulator
                 frameCompleted = true;
             }
             _serial.Step(cycles);
+            _apu.Step(cycles);
             _mmu.StepDma(cycles);
             _cycleAccumulator += cycles;
             cyclesRun += cycles;

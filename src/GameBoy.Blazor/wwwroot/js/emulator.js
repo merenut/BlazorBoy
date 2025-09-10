@@ -1,6 +1,10 @@
 window.gbInterop = (function(){
   let rafId = 0;
   let dotnetObj = null;
+  let audioContext = null;
+  let audioWorkletNode = null;
+  let audioEnabled = false;
+  let audioInitialized = false;
 
   function startRenderLoop(dotnet) {
     dotnetObj = dotnet;
@@ -50,10 +54,90 @@ window.gbInterop = (function(){
     ctx.putImageData(imageData, 0, 0);
   }
 
+  async function initAudio() {
+    if (audioInitialized) return true;
+    
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: 44100,
+        latencyHint: 'interactive'
+      });
+
+      // Resume audio context if it's suspended (browser autoplay policy)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
+      // Load AudioWorklet processor
+      await audioContext.audioWorklet.addModule('/js/gameboy-audio-processor.js');
+      
+      // Create AudioWorklet node
+      audioWorkletNode = new AudioWorkletNode(audioContext, 'gameboy-audio-processor', {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [2] // Stereo output
+      });
+
+      // Connect to audio output
+      audioWorkletNode.connect(audioContext.destination);
+
+      audioInitialized = true;
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize audio:', error);
+      return false;
+    }
+  }
+
+  async function enableAudio() {
+    if (!audioInitialized) {
+      const success = await initAudio();
+      if (!success) return false;
+    }
+
+    if (audioContext && audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+
+    audioEnabled = true;
+    return true;
+  }
+
+  function disableAudio() {
+    audioEnabled = false;
+    if (audioContext && audioContext.state === 'running') {
+      audioContext.suspend();
+    }
+  }
+
+  function updateAudioBuffer(samples) {
+    if (!audioEnabled || !audioWorkletNode) return;
+    
+    // Send audio samples to AudioWorklet
+    audioWorkletNode.port.postMessage({
+      type: 'audioData',
+      samples: samples
+    });
+  }
+
+  function setAudioVolume(volume) {
+    if (audioWorkletNode) {
+      audioWorkletNode.port.postMessage({
+        type: 'setVolume',
+        volume: Math.max(0, Math.min(1, volume))
+      });
+    }
+  }
+
   return {
     startRenderLoop,
     stopRenderLoop,
     getCanvasContext,
-    drawFrame
+    drawFrame,
+    initAudio,
+    enableAudio,
+    disableAudio,
+    updateAudioBuffer,
+    setAudioVolume
   };
 })();
