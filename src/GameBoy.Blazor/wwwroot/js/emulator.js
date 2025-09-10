@@ -173,3 +173,26 @@ window.gbInterop = (function(){
     setAudioVolume
   };
 })();
+
+// Theme management functions
+window.detectDarkMode = function() {
+  // Check saved preference first
+  const saved = localStorage.getItem('theme');
+  if (saved) {
+    return saved === 'dark';
+  }
+  
+  // Otherwise check system preference
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
+window.setTheme = function(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+};
+
+// Initialize theme on load
+document.addEventListener('DOMContentLoaded', function() {
+  const isDark = window.detectDarkMode();
+  window.setTheme(isDark ? 'dark' : 'light');
+});

@@ -1,24 +1,28 @@
 @using GameBoy.Blazor.Services
 @inject ISettingsService SettingsService
 
-<div class="emulator-controls d-flex align-items-center gap-2">
-    <button class="btn btn-sm @(_isRunning ? "btn-warning" : "btn-success")" 
+<div class="emulator-controls" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+    <button class="btn-modern @(_isRunning ? "btn-danger" : "btn-success")" 
             @onclick="ToggleRunPause"
-            disabled="@(!_hasRom)">
+            disabled="@(!_hasRom)"
+            aria-label="@(_isRunning ? "Pause emulation" : "Start emulation")">
         @(_isRunning ? "⏸️ Pause" : "▶️ Run")
     </button>
     
-    <button class="btn btn-sm btn-outline-danger" 
+    <button class="btn-modern" 
             @onclick="Reset"
-            disabled="@(!_hasRom)">
+            disabled="@(!_hasRom)"
+            aria-label="Reset emulation">
         🔄 Reset
     </button>
     
-    <div class="d-flex align-items-center gap-1">
-        <label class="form-label mb-0 small">Speed:</label>
-        <select class="form-select form-select-sm speed-select" 
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <label style="font-size: 0.9rem; color: var(--text-secondary);">Speed:</label>
+        <select class="form-control-modern" 
+                style="width: 80px; padding: 0.5rem;"
                 value="@_speedMultiplier" 
-                @onchange="OnSpeedChanged">
+                @onchange="OnSpeedChanged"
+                aria-label="Emulation speed">
             <option value="0.5">0.5×</option>
             <option value="1.0">1×</option>
             <option value="1.5">1.5×</option>
@@ -27,12 +31,6 @@
         </select>
     </div>
 </div>
-
-<style>
-    .emulator-controls .speed-select {
-        width: 70px;
-    }
-</style>
 
 @code {
     [Parameter] public bool HasRom { get; set; }

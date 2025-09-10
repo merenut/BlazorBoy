@@ -7,111 +7,111 @@
 @inject IPersistenceService PersistenceService
 @inject ISettingsService SettingsService
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @implements IDisposable
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col">
-            <h1>Game Boy (Blazor)</h1>
-        </div>
+<!-- Header -->
+<div class="game-header">
+    <h1>BlazorBoy</h1>
+</div>
+
+<!-- Main Game Layout -->
+<div class="game-layout-centered">
+    <!-- Compact Game Cartridge Section -->
+    <div class="game-cartridge-compact">
+        <h6>Game Cartridge</h6>
+        <RomLoader OnRomLoaded="OnRomLoaded" @ref="_romLoader" />
     </div>
 
-    <!-- Main Control Panel -->
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="row g-3 align-items-center">
-                <!-- ROM Loader -->
-                <div class="col-md-3">
-                    <RomLoader OnRomLoaded="OnRomLoaded" @ref="_romLoader" />
-                </div>
 
-                <!-- Emulator Controls -->
-                <div class="col-md-3">
-                    <EmulatorControls HasRom="_hasRom" 
-                                    IsRunning="_isRunning"
-                                    OnToggleRunPause="ToggleRunPause"
-                                    OnReset="ResetEmulator"
-                                    OnSpeedChangeCallback="OnSpeedChanged" 
-                                    @ref="_emulatorControls" />
-                </div>
 
-                <!-- Audio Controls -->
-                <div class="col-md-3">
-                    <AudioToggle OnAudioStateChanged="OnAudioStateChanged"
-                               OnVolumeChangeCallback="OnVolumeChanged" 
-                               @ref="_audioToggle" />
-                </div>
-
-                <!-- FPS Counter -->
-                <div class="col-md-3">
-                    <FpsCounter CurrentFps="_lastFps" @ref="_fpsCounter" />
-                </div>
+    <!-- Game Screen - Primary Focus -->
+        <div class="game-screen-container">
+            <div class="game-canvas-wrapper" tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
+                <canvas id="screen" width="160" height="144" 
+                        class="game-canvas"
+                        style="width: 320px; height: 288px;"></canvas>
             </div>
+            <div class="canvas-instruction">
+                <small>Click on screen and use keyboard or touch controls</small>
+            </div>
+        </div>
+
+    <!-- Save States -->
+    <div class="save-states-compact">
+        <h6>Save States</h6>
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <button class="btn-modern btn-success" @onclick="SaveState" disabled="@(!_hasRom)">
+                    💾 Quick Save
+                </button>
+                <button class="btn-modern btn-primary" @onclick="LoadState" disabled="@(!_hasRom)">
+                    📁 Quick Load
+                </button>
+                @if (_saveStateMessage != null)
+                {
+                    <small style="color: @(_saveStateSuccess ? "var(--success)" : "var(--danger)")">@_saveStateMessage</small>
+                }
         </div>
     </div>
+</div>
 
-    <!-- Game Screen and Debug Section -->
-    <div class="row">
-        <div class="col-lg-8">
-            <!-- Game Canvas -->
-            <div class="card">
-                <div class="card-body text-center">
-                    <div tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
-                        <canvas id="screen" width="160" height="144" 
-                                style="image-rendering: pixelated; width: 320px; height: 288px; border:1px solid #ccc; background: #9bbc0f"></canvas>
-                        <div class="mt-2">
-                            <small class="text-muted">Click canvas and use keyboard controls</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<!-- Settings Overlay Toggle Button -->
+<button class="overlay-toggle-btn" @onclick="ToggleSettingsOverlay" aria-label="Toggle Settings">
+    ⚙️ Settings
+</button>
 
-            <!-- Save States -->
-            <div class="card mt-3">
-                <div class="card-body">
-                    <h6 class="card-title">Save States</h6>
-                    <div class="d-flex gap-2 align-items-center">
-                        <button class="btn btn-sm btn-success" @onclick="SaveState" disabled="@(!_hasRom)">
-                            💾 Save State
-                        </button>
-                        <button class="btn btn-sm btn-primary" @onclick="LoadState" disabled="@(!_hasRom)">
-                            📁 Load State
-                        </button>
-                        @if (_saveStateMessage != null)
-                        {
-                            <small class="ms-2 @(_saveStateSuccess ? "text-success" : "text-danger")">@_saveStateMessage</small>
-                        }
-                    </div>
-                </div>
-            </div>
+<!-- Settings Overlay -->
+<div class="settings-overlay @(_showSettingsOverlay ? "show" : "")">
+    <div class="overlay-header">
+        <h6>Settings & Controls</h6>
+        <button class="overlay-close" @onclick="ToggleSettingsOverlay" aria-label="Close Settings">×</button>
+    </div>
+    
+    <div class="overlay-content">
+        <!-- Emulator Controls -->
+        <div class="overlay-section">
+            <h6>Emulator Controls</h6>
+            <EmulatorControls HasRom="_hasRom" 
+                            IsRunning="_isRunning"
+                            OnToggleRunPause="ToggleRunPause"
+                            OnReset="ResetEmulator"
+                            OnSpeedChangeCallback="OnSpeedChanged" 
+                            @ref="_emulatorControls" />
         </div>
 
-        <div class="col-lg-4">
-            <!-- Input Remapping -->
-            <div class="card mb-3">
-                <div class="card-body">
-                    <InputRemapping OnMappingsChanged="OnInputMappingsChanged" @ref="_inputRemapping" />
-                </div>
-            </div>
+        <!-- Audio Controls -->
+        <div class="overlay-section">
+            <h6>Audio</h6>
+            <AudioToggle OnAudioStateChanged="OnAudioStateChanged"
+                       OnVolumeChangeCallback="OnVolumeChanged" 
+                       @ref="_audioToggle" />
+        </div>
 
-            <!-- Debug Section -->
-            <div class="card">
-                <div class="card-body">
-                    <h6 class="card-title">Debug Tools</h6>
-                    <div class="d-flex flex-wrap gap-2">
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="CreateTestPattern">Test VRAM</button>
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="CreateDirectTestPattern">Test Direct</button>
-                        <button class="btn btn-sm btn-outline-info" @onclick="ShowDebugInfo">Debug Info</button>
-                    </div>
-                    
-                    @if (_showDebugInfo)
-                    {
-                        <div class="mt-3">
-                            <pre style="font-size: 0.8em; background-color: #f8f9fa; padding: 10px; border-radius: 5px; max-height: 300px; overflow-y: auto;">@_debugInfo</pre>
-                        </div>
-                    }
-                </div>
+        <!-- Performance -->
+        <div class="overlay-section">
+            <h6>Performance</h6>
+            <FpsCounter CurrentFps="_lastFps" @ref="_fpsCounter" />
+        </div>
+
+        <!-- Input Remapping -->
+        <div class="overlay-section">
+            <InputRemapping OnMappingsChanged="OnInputMappingsChanged" @ref="_inputRemapping" />
+        </div>
+
+        <!-- Debug Tools -->
+        <div class="overlay-section">
+            <h6>Debug Tools</h6>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                <button class="btn-modern" @onclick="CreateTestPattern">Test VRAM</button>
+                <button class="btn-modern" @onclick="CreateDirectTestPattern">Test Direct</button>
+                <button class="btn-modern btn-info" @onclick="ShowDebugInfo">Debug Info</button>
+                <button class="btn-modern btn-primary" @onclick="NavigateToDebugPage">🔧 Debug Page</button>
             </div>
+            
+            @if (_showDebugInfo)
+            {
+                <div class="debug-panel">@_debugInfo</div>
+            }
         </div>
     </div>
 </div>
@@ -144,6 +144,9 @@
     // Debug
     private bool _showDebugInfo = false;
     private string _debugInfo = "";
+
+    // Settings overlay
+    private bool _showSettingsOverlay = false;
 
     // Save state
     private string? _currentRomKey;
@@ -459,6 +462,16 @@
     {
         _debugInfo = Emulator.GetDebugInfo();
         _showDebugInfo = !_showDebugInfo;
+    }
+
+    private void NavigateToDebugPage()
+    {
+        Navigation.NavigateTo("/debug");
+    }
+
+    private void ToggleSettingsOverlay()
+    {
+        _showSettingsOverlay = !_showSettingsOverlay;
     }
 
     public void Dispose()

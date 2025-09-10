@@ -4,68 +4,78 @@
 @inject IJSRuntime JS
 
 <div class="rom-loader">
-    @if (!string.IsNullOrEmpty(LastRomName))
+    @if (_isLoaded && !_isExpanded)
     {
-        <div class="mb-2">
-            <small class="text-muted">Last ROM: @LastRomName</small>
+        <!-- Collapsed state - show loaded ROM info -->
+        <div class="rom-loader-collapsed">
+            <div class="loaded-rom-info">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="font-size: 1.2rem;">📁</div>
+                    <div style="flex: 1;">
+                        <strong>@_loadedRomName</strong>
+                        @if (_selectedFileSize > 0)
+                        {
+                            <div><small style="color: var(--text-muted);">@FormatFileSize(_selectedFileSize)</small></div>
+                        }
+                    </div>
+                    <button class="btn-modern btn-sm" @onclick="ExpandLoader">
+                        Change ROM
+                    </button>
+                </div>
+            </div>
         </div>
     }
-    
-    <div class="file-drop-area @(_isDragOver ? "drag-over" : "")" 
-         @ondragover="OnDragOver" 
-         @ondragover:preventDefault="true"
-         @ondragleave="OnDragLeave"
-         @ondrop="OnDrop"
-         @ondrop:preventDefault="true">
-        
-        <div class="file-drop-content">
-            <i class="fas fa-upload mb-2"></i>
-            <div>
-                <strong>Drop ROM file here</strong><br />
-                <small class="text-muted">or</small>
-            </div>
-            <InputFile OnChange="OnFileSelected" accept=".gb,.gbc" class="d-none" @ref="_fileInput" />
-            <button type="button" class="btn btn-outline-primary btn-sm mt-2" @onclick="OpenFilePicker">
-                📁 Browse Files
-            </button>
-        </div>
-    </div>
-    
-    @if (!string.IsNullOrEmpty(_selectedFileName))
+    else
     {
-        <div class="mt-2">
-            <strong>Selected:</strong> @_selectedFileName
-            @if (_selectedFileSize > 0)
-            {
-                <small class="text-muted">(@FormatFileSize(_selectedFileSize))</small>
-            }
+        <!-- Expanded state - show full ROM loading interface -->
+        @if (_isLoaded)
+        {
+            <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                <small style="color: var(--text-muted);">Current ROM: @_loadedRomName</small>
+                <button class="btn-modern btn-sm" @onclick="CollapseLoader">
+                    Minimize
+                </button>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(LastRomName))
+        {
+            <div style="margin-bottom: 0.75rem;">
+                <small style="color: var(--text-muted);">Last ROM: @LastRomName</small>
+            </div>
+        }
+        
+        <div class="rom-upload-area @(_isDragOver ? "dragover" : "")" 
+             @ondragover="OnDragOver" 
+             @ondragover:preventDefault="true"
+             @ondragleave="OnDragLeave"
+             @ondrop="OnDrop"
+             @ondrop:preventDefault="true">
+            
+            <div class="file-drop-content">
+                <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📁</div>
+                <div>
+                    <strong>Drop ROM file here</strong><br />
+                    <small style="color: var(--text-muted);">or</small>
+                </div>
+                <InputFile OnChange="OnFileSelected" accept=".gb,.gbc" style="display: none;" @ref="_fileInput" />
+                <button type="button" class="btn-modern btn-primary" style="margin-top: 0.75rem;" @onclick="OpenFilePicker">
+                    📁 Browse Files
+                </button>
+            </div>
         </div>
+        
+        @if (!string.IsNullOrEmpty(_selectedFileName) && !_isLoaded)
+        {
+            <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-primary); border-radius: var(--border-radius); border: 1px solid var(--border-color);">
+                <strong>Selected:</strong> @_selectedFileName
+                @if (_selectedFileSize > 0)
+                {
+                    <small style="color: var(--text-muted);">(@FormatFileSize(_selectedFileSize))</small>
+                }
+            </div>
+        }
     }
 </div>
-
-<style>
-    .rom-loader .file-drop-area {
-        border: 2px dashed #ccc;
-        border-radius: 8px;
-        padding: 20px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background-color: #f8f9fa;
-    }
-    
-    .rom-loader .file-drop-area:hover,
-    .rom-loader .file-drop-area.drag-over {
-        border-color: #007bff;
-        background-color: #e3f2fd;
-    }
-    
-    .rom-loader .file-drop-content i {
-        font-size: 2rem;
-        color: #6c757d;
-        display: block;
-    }
-</style>
 
 @code {
     [Parameter] public EventCallback<(byte[] data, string fileName)> OnRomLoaded { get; set; }
@@ -74,6 +84,11 @@
     private string? _selectedFileName;
     private long _selectedFileSize;
     private InputFile? _fileInput;
+    
+    // State for collapsed/expanded view
+    private bool _isLoaded = false;
+    private bool _isExpanded = false;
+    private string? _loadedRomName;
     
     public string? LastRomName { get; private set; }
 
@@ -123,6 +138,9 @@
             // Save ROM name to settings
             await SettingsService.SetLastRomNameAsync(file.Name);
             LastRomName = file.Name;
+            _loadedRomName = file.Name;
+            _isLoaded = true;
+            _isExpanded = false; // Collapse after loading
             
             // Notify parent component
             await OnRomLoaded.InvokeAsync((romData, file.Name));
@@ -141,6 +159,18 @@
         {
             await JS.InvokeVoidAsync("eval", "document.querySelector('input[type=file]').click()");
         }
+    }
+
+    private void ExpandLoader()
+    {
+        _isExpanded = true;
+        StateHasChanged();
+    }
+
+    private void CollapseLoader()
+    {
+        _isExpanded = false;
+        StateHasChanged();
     }
 
     private static string FormatFileSize(long bytes)
