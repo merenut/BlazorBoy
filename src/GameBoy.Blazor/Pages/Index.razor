@@ -1,7 +1,11 @@
 @page "/"
 @using GameBoy.Core
+@using GameBoy.Core.Persistence
+@using GameBoy.Blazor.Services
 @inject Emulator Emulator
+@inject IPersistenceService PersistenceService
 @inject IJSRuntime JS
+@implements IDisposable
 
 <h1>Game Boy (Blazor)</h1>
 
@@ -37,6 +41,22 @@
         <pre style="font-size: 0.8em; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">@_debugInfo</pre>
     </div>
 }
+
+<div class="row mt-3">
+    <div class="col-auto">
+        <small class="text-muted">Save States:</small>
+        <button class="btn btn-sm btn-success" @onclick="SaveState" disabled="@(_currentRomKey == null)">
+            💾 Save State
+        </button>
+        <button class="btn btn-sm btn-primary" @onclick="LoadState" disabled="@(_currentRomKey == null)">
+            📁 Load State
+        </button>
+        @if (_saveStateMessage != null)
+        {
+            <small class="ms-2 @(_saveStateSuccess ? "text-success" : "text-danger")">@_saveStateMessage</small>
+        }
+    </div>
+</div>
 
 <div tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
     <canvas id="screen" width="160" height="144" style="image-rendering: pixelated; width: 320px; height: 288px; border:1px solid #ccc"></canvas>
@@ -143,15 +163,145 @@
         }
     }
 
+    private string? _currentRomKey;
+    private string? _saveStateMessage;
+    private bool _saveStateSuccess;
+
     private async Task OnRomSelected(InputFileChangeEventArgs e)
     {
         var file = e.File;
         if (file is null) return;
+        
         using var stream = file.OpenReadStream(maxAllowedSize: 4 * 1024 * 1024);
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
-        Emulator.LoadRom(ms.ToArray());
+        byte[] romData = ms.ToArray();
+        
+        // Save current battery RAM before loading new ROM
+        await SaveCurrentBatteryRam();
+        
+        // Generate ROM key for persistence
+        _currentRomKey = BatteryStore.GenerateRomKey(romData);
+        
+        // Load new ROM
+        Emulator.LoadRom(romData);
+        
+        // Load battery RAM for this ROM if it exists
+        await LoadBatteryRamForCurrentRom();
+        
         _isInTestMode = false; // Resume emulation when ROM is loaded
+    }
+
+    private async Task SaveCurrentBatteryRam()
+    {
+        if (_currentRomKey != null && Emulator.HasBatteryRam)
+        {
+            try
+            {
+                byte[]? batteryData = Emulator.GetBatteryRam();
+                await PersistenceService.SaveBatteryRamAsync(_currentRomKey, batteryData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to save battery RAM: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task LoadBatteryRamForCurrentRom()
+    {
+        if (_currentRomKey != null && Emulator.HasBatteryRam)
+        {
+            try
+            {
+                byte[]? batteryData = await PersistenceService.LoadBatteryRamAsync(_currentRomKey);
+                if (batteryData != null)
+                {
+                    Emulator.LoadBatteryRam(batteryData);
+                    Console.WriteLine($"Loaded battery RAM for {_currentRomKey} ({batteryData.Length} bytes)");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to load battery RAM: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task SaveState()
+    {
+        if (_currentRomKey == null)
+        {
+            ShowSaveStateMessage("No ROM loaded", false);
+            return;
+        }
+
+        try
+        {
+            byte[] saveStateData = Emulator.SerializeSaveState();
+            string slotKey = $"{_currentRomKey}_quick";
+            
+            bool success = await PersistenceService.SaveSaveStateAsync(slotKey, saveStateData);
+            if (success)
+            {
+                ShowSaveStateMessage($"State saved ({saveStateData.Length} bytes)", true);
+            }
+            else
+            {
+                ShowSaveStateMessage("Failed to save state", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Save state error: {ex.Message}");
+            ShowSaveStateMessage($"Error: {ex.Message}", false);
+        }
+    }
+
+    private async Task LoadState()
+    {
+        if (_currentRomKey == null)
+        {
+            ShowSaveStateMessage("No ROM loaded", false);
+            return;
+        }
+
+        try
+        {
+            string slotKey = $"{_currentRomKey}_quick";
+            byte[]? saveStateData = await PersistenceService.LoadSaveStateAsync(slotKey);
+            
+            if (saveStateData == null)
+            {
+                ShowSaveStateMessage("No save state found", false);
+                return;
+            }
+
+            Emulator.DeserializeSaveState(saveStateData);
+            ShowSaveStateMessage($"State loaded ({saveStateData.Length} bytes)", true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Load state error: {ex.Message}");
+            ShowSaveStateMessage($"Error: {ex.Message}", false);
+        }
+    }
+
+    private void ShowSaveStateMessage(string message, bool success)
+    {
+        _saveStateMessage = message;
+        _saveStateSuccess = success;
+        StateHasChanged();
+
+        // Clear message after 3 seconds
+        _ = Task.Delay(3000).ContinueWith(t =>
+        {
+            if (_saveStateMessage == message) // Only clear if it's still the same message
+            {
+                _saveStateMessage = null;
+                InvokeAsync(StateHasChanged);
+            }
+        });
     }
 
     private async Task CreateTestPattern()
@@ -202,6 +352,27 @@
             if (_audioEnabled)
             {
                 await JS.InvokeVoidAsync("gbInterop.setAudioVolume", _audioVolume);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+        
+        // Save battery RAM before disposing
+        if (_currentRomKey != null && Emulator.HasBatteryRam)
+        {
+            try
+            {
+                byte[]? batteryData = Emulator.GetBatteryRam();
+                // Note: This is sync because Dispose can't be async
+                // The data will be saved on next visit if this fails
+                _ = Task.Run(async () => await PersistenceService.SaveBatteryRamAsync(_currentRomKey, batteryData));
+            }
+            catch
+            {
+                // Ignore errors during dispose
             }
         }
     }

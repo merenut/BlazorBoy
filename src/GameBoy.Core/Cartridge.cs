@@ -43,6 +43,15 @@ public abstract class Cartridge
     }
 
     /// <summary>
+    /// Gets the ROM data for this cartridge.
+    /// </summary>
+    /// <returns>ROM data</returns>
+    public byte[] GetRomData()
+    {
+        return Rom;
+    }
+
+    /// <summary>
     /// Detects and creates the correct cartridge controller (MBC).
     /// </summary>
     public static Cartridge Detect(byte[] rom)
