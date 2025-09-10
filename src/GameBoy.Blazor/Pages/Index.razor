@@ -19,7 +19,7 @@
     </div>
 </div>
 
-<div tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @ref="_focusable">
+<div tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
     <canvas id="screen" width="160" height="144" style="image-rendering: pixelated; width: 320px; height: 288px; border:1px solid #ccc"></canvas>
     <p class="text-muted">Click here and use arrows, Z, X, Enter, Shift.</p>
     </div>
@@ -29,6 +29,7 @@
     private double _lastFps;
     private long _lastTs;
     private ElementReference _focusable;
+    private bool _isInTestMode = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -54,16 +55,21 @@
         if (delta > 0)
             _lastFps = 1000.0 / delta;
 
-        // Run emulator with limited cycles per frame to maintain 60 FPS
-        // Game Boy runs at ~59.7 FPS, so we target about 70224 cycles per 16.7ms
-        // But we'll spread this across animation frames for better performance
-        const int cyclesPerAnimationFrame = 8000; // Reduced from full 70224
-        bool frameReady = Emulator.StepFrame(cyclesPerAnimationFrame);
-        
-        if (frameReady)
+        // Skip emulation if we're in test mode
+        if (!_isInTestMode)
         {
-            await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+            // Run emulator with limited cycles per frame to maintain 60 FPS
+            // Game Boy runs at ~59.7 FPS, so we target about 70224 cycles per 16.7ms
+            // But we'll spread this across animation frames for better performance
+            const int cyclesPerAnimationFrame = 8000; // Reduced from full 70224
+            bool frameReady = Emulator.StepFrame(cyclesPerAnimationFrame);
+            
+            if (frameReady)
+            {
+                await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+            }
         }
+        
         StateHasChanged();
         return true; // continue loop
     }
@@ -72,6 +78,11 @@
 
     private void OnKeyDown(KeyboardEventArgs e) => UpdateJoypad(e, true);
     private void OnKeyUp(KeyboardEventArgs e) => UpdateJoypad(e, false);
+
+    private void OnCanvasClick()
+    {
+        _isInTestMode = false; // Resume emulation when user clicks canvas
+    }
 
     private void UpdateJoypad(KeyboardEventArgs e, bool down)
     {
@@ -96,17 +107,22 @@
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
         Emulator.LoadRom(ms.ToArray());
+        _isInTestMode = false; // Resume emulation when ROM is loaded
     }
 
     private async Task CreateTestPattern()
     {
+        _isInTestMode = true; // Pause emulation
         Emulator.CreateTestPattern();
         // Immediately update the canvas to show the test pattern
         await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
     }
 
-    private void CreateDirectTestPattern()
+    private async Task CreateDirectTestPattern()
     {
+        _isInTestMode = true; // Pause emulation
         Emulator.CreateDirectTestPattern();
+        // Immediately update the canvas to show the test pattern
+        await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
     }
 }
