@@ -96,6 +96,11 @@ public sealed class Mmu
     public Joypad? Joypad { get; set; }
 
     /// <summary>
+    /// The APU unit that manages all audio channels and registers.
+    /// </summary>
+    public Apu? Apu { get; set; }
+
+    /// <summary>
     /// Gets whether a DMA transfer is currently in progress.
     /// </summary>
     public bool IsDmaActive => _dmaActive;
@@ -386,6 +391,7 @@ public sealed class Mmu
             TMA => Timer?.TMA ?? 0x00,
             TAC => Timer?.TAC ?? 0xF8,
             IF => InterruptController.IF, // Delegate to InterruptController
+            >= IoRegs.NR10 and <= IoRegs.NR52 => Apu?.ReadRegister(addr) ?? 0xFF,
             LCDC => _lcdc,
             STAT => Ppu?.STAT ?? _stat,
             SCY => _scy,
@@ -398,6 +404,7 @@ public sealed class Mmu
             OBP1 => _obp1,
             WY => _wy,
             WX => _wx,
+            >= IoRegs.WAVE_RAM_START and <= IoRegs.WAVE_RAM_END => Apu?.ReadWaveRam((int)(addr - IoRegs.WAVE_RAM_START)) ?? 0xFF,
             _ => 0xFF // All other I/O registers read as 0xFF
         };
     }
@@ -429,6 +436,9 @@ public sealed class Mmu
             case IF:
                 // Delegate to InterruptController
                 InterruptController.SetIF(value);
+                break;
+            case >= IoRegs.NR10 and <= IoRegs.NR52:
+                Apu?.WriteRegister(addr, value);
                 break;
             case LCDC:
                 _lcdc = value;
@@ -468,6 +478,9 @@ public sealed class Mmu
                 break;
             case WX:
                 _wx = value;
+                break;
+            case >= IoRegs.WAVE_RAM_START and <= IoRegs.WAVE_RAM_END:
+                Apu?.WriteWaveRam((int)(addr - IoRegs.WAVE_RAM_START), value);
                 break;
                 // All other I/O register writes are ignored
         }
