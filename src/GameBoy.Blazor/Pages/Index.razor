@@ -12,9 +12,22 @@
     <div class="col-auto align-self-center">
         <span>FPS: @(_lastFps.ToString("0.0"))</span>
     </div>
+    <div class="col-auto">
+        <small class="text-muted">Debug:</small>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="CreateTestPattern">Test VRAM</button>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="CreateDirectTestPattern">Test Direct</button>
+        <button class="btn btn-sm btn-outline-info" @onclick="ShowDebugInfo">Debug Info</button>
+    </div>
 </div>
 
-<div tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @ref="_focusable">
+@if (_showDebugInfo)
+{
+    <div class="mt-3">
+        <pre style="font-size: 0.8em; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">@_debugInfo</pre>
+    </div>
+}
+
+<div tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
     <canvas id="screen" width="160" height="144" style="image-rendering: pixelated; width: 320px; height: 288px; border:1px solid #ccc"></canvas>
     <p class="text-muted">Click here and use arrows, Z, X, Enter, Shift.</p>
     </div>
@@ -24,6 +37,9 @@
     private double _lastFps;
     private long _lastTs;
     private ElementReference _focusable;
+    private bool _isInTestMode = false;
+    private bool _showDebugInfo = false;
+    private string _debugInfo = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -49,11 +65,20 @@
         if (delta > 0)
             _lastFps = 1000.0 / delta;
 
-        bool frameReady = Emulator.StepFrame();
-        if (frameReady)
+        // Skip emulation if we're in test mode
+        if (!_isInTestMode)
         {
-            await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+            // Run emulator with balanced cycles per frame to maintain good performance
+            // while allowing ROM to execute properly
+            const int cyclesPerAnimationFrame = 17500; // Quarter of full 70224 for balanced performance
+            bool frameReady = Emulator.StepFrame(cyclesPerAnimationFrame);
+            
+            if (frameReady)
+            {
+                await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+            }
         }
+        
         StateHasChanged();
         return true; // continue loop
     }
@@ -62,6 +87,11 @@
 
     private void OnKeyDown(KeyboardEventArgs e) => UpdateJoypad(e, true);
     private void OnKeyUp(KeyboardEventArgs e) => UpdateJoypad(e, false);
+
+    private void OnCanvasClick()
+    {
+        _isInTestMode = false; // Resume emulation when user clicks canvas
+    }
 
     private void UpdateJoypad(KeyboardEventArgs e, bool down)
     {
@@ -86,5 +116,28 @@
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
         Emulator.LoadRom(ms.ToArray());
+        _isInTestMode = false; // Resume emulation when ROM is loaded
+    }
+
+    private async Task CreateTestPattern()
+    {
+        _isInTestMode = true; // Pause emulation
+        Emulator.CreateTestPattern();
+        // Immediately update the canvas to show the test pattern
+        await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+    }
+
+    private async Task CreateDirectTestPattern()
+    {
+        _isInTestMode = true; // Pause emulation
+        Emulator.CreateDirectTestPattern();
+        // Immediately update the canvas to show the test pattern
+        await JS.InvokeVoidAsync("gbInterop.drawFrame", "screen", Ppu.ScreenWidth, Ppu.ScreenHeight, Emulator.Ppu.FrameBuffer);
+    }
+
+    private void ShowDebugInfo()
+    {
+        _debugInfo = Emulator.GetDebugInfo();
+        _showDebugInfo = !_showDebugInfo;
     }
 }

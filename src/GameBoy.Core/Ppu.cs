@@ -550,6 +550,28 @@ public sealed class Ppu
     }
 
     /// <summary>
+    /// Forces a complete frame render from VRAM data.
+    /// This is used for testing purposes to render VRAM patterns immediately.
+    /// </summary>
+    public void ForceRenderFrame()
+    {
+        // Update register cache before rendering
+        RefreshRegisterCache();
+
+        // Only render if LCD is enabled
+        if (!_lcdc.LcdEnable)
+        {
+            return;
+        }
+
+        // Render all scanlines
+        for (int scanline = 0; scanline < ScreenHeight; scanline++)
+        {
+            RenderScanline(scanline);
+        }
+    }
+
+    /// <summary>
     /// Checks for STAT interrupt conditions.
     /// </summary>
     private void CheckStatInterrupt()

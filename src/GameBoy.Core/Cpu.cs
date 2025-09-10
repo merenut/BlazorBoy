@@ -120,8 +120,8 @@ public sealed class Cpu
         if (IsHalted)
         {
             // Check for pending interrupts that would wake up from HALT
-            // HALT wakes up only when an interrupt is both requested (IF) AND enabled (IE)
-            if (_mmu.InterruptController.TryGetPending(out _))
+            // HALT wakes up when any interrupt flags are set (IF != 0)
+            if (_mmu.InterruptController.HasAnyInterruptFlags())
             {
                 IsHalted = false; // Wake up from HALT
                 return 4; // Wake up takes 4 cycles, but don't execute next instruction yet
