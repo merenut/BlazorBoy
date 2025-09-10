@@ -1,7 +1,11 @@
 @page "/"
 @using GameBoy.Core
+@using GameBoy.Core.Persistence
+@using GameBoy.Blazor.Services
 @inject Emulator Emulator
+@inject IPersistenceService PersistenceService
 @inject IJSRuntime JS
+@implements IDisposable
 
 <h1>Game Boy (Blazor)</h1>
 
@@ -143,15 +147,67 @@
         }
     }
 
+    private string? _currentRomKey;
+
     private async Task OnRomSelected(InputFileChangeEventArgs e)
     {
         var file = e.File;
         if (file is null) return;
+        
         using var stream = file.OpenReadStream(maxAllowedSize: 4 * 1024 * 1024);
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
-        Emulator.LoadRom(ms.ToArray());
+        byte[] romData = ms.ToArray();
+        
+        // Save current battery RAM before loading new ROM
+        await SaveCurrentBatteryRam();
+        
+        // Generate ROM key for persistence
+        _currentRomKey = BatteryStore.GenerateRomKey(romData);
+        
+        // Load new ROM
+        Emulator.LoadRom(romData);
+        
+        // Load battery RAM for this ROM if it exists
+        await LoadBatteryRamForCurrentRom();
+        
         _isInTestMode = false; // Resume emulation when ROM is loaded
+    }
+
+    private async Task SaveCurrentBatteryRam()
+    {
+        if (_currentRomKey != null && Emulator.HasBatteryRam)
+        {
+            try
+            {
+                byte[]? batteryData = Emulator.GetBatteryRam();
+                await PersistenceService.SaveBatteryRamAsync(_currentRomKey, batteryData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to save battery RAM: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task LoadBatteryRamForCurrentRom()
+    {
+        if (_currentRomKey != null && Emulator.HasBatteryRam)
+        {
+            try
+            {
+                byte[]? batteryData = await PersistenceService.LoadBatteryRamAsync(_currentRomKey);
+                if (batteryData != null)
+                {
+                    Emulator.LoadBatteryRam(batteryData);
+                    Console.WriteLine($"Loaded battery RAM for {_currentRomKey} ({batteryData.Length} bytes)");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to load battery RAM: {ex.Message}");
+            }
+        }
     }
 
     private async Task CreateTestPattern()
@@ -202,6 +258,27 @@
             if (_audioEnabled)
             {
                 await JS.InvokeVoidAsync("gbInterop.setAudioVolume", _audioVolume);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+        
+        // Save battery RAM before disposing
+        if (_currentRomKey != null && Emulator.HasBatteryRam)
+        {
+            try
+            {
+                byte[]? batteryData = Emulator.GetBatteryRam();
+                // Note: This is sync because Dispose can't be async
+                // The data will be saved on next visit if this fails
+                _ = Task.Run(async () => await PersistenceService.SaveBatteryRamAsync(_currentRomKey, batteryData));
+            }
+            catch
+            {
+                // Ignore errors during dispose
             }
         }
     }
