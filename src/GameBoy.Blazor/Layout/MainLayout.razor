@@ -1,16 +1,71 @@
-﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@using Microsoft.JSInterop
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+<div class="game-container">
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" @onclick="ToggleTheme" aria-label="Toggle dark/light theme">
+        @if (_isDarkMode)
+        {
+            <span>☀️</span>
+        }
+        else
+        {
+            <span>🌙</span>
+        }
+    </button>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
+    @Body
 </div>
+
+@code {
+    private bool _isDarkMode = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Check saved preference or system preference for dark mode
+                _isDarkMode = await JS.InvokeAsync<bool>("detectDarkMode");
+                await ApplyTheme();
+                StateHasChanged();
+            }
+            catch
+            {
+                // JS functions might not be loaded yet, fallback to light mode
+                _isDarkMode = false;
+                await ApplyTheme();
+            }
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        _isDarkMode = !_isDarkMode;
+        await ApplyTheme();
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "theme", _isDarkMode ? "dark" : "light");
+        }
+        catch
+        {
+            // Ignore if localStorage is not available
+        }
+    }
+
+    private async Task ApplyTheme()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("setTheme", _isDarkMode ? "dark" : "light");
+        }
+        catch
+        {
+            // Fallback: apply theme directly via JS evaluation
+            string script = $"document.documentElement.setAttribute('data-theme', '{(_isDarkMode ? "dark" : "light")}');";
+            await JS.InvokeVoidAsync("eval", script);
+        }
+    }
+}

@@ -1,28 +1,9 @@
 @implements IDisposable
 
 <div class="fps-counter">
-    <small class="text-muted">FPS:</small>
-    <span class="fps-value @GetFpsClass()">@CurrentFps.ToString("0.0")</span>
+    <span style="color: var(--text-secondary); font-size: 0.9rem;">FPS:</span>
+    <span class="fps-value @GetFpsClass()" style="font-weight: 600; font-family: 'Monaco', 'Consolas', monospace;">@CurrentFps.ToString("0.0")</span>
 </div>
-
-<style>
-    .fps-counter .fps-value {
-        font-weight: bold;
-        font-family: 'Courier New', monospace;
-    }
-    
-    .fps-counter .fps-good {
-        color: #28a745;
-    }
-    
-    .fps-counter .fps-warning {
-        color: #ffc107;
-    }
-    
-    .fps-counter .fps-bad {
-        color: #dc3545;
-    }
-</style>
 
 @code {
     [Parameter] public double CurrentFps { get; set; }
@@ -65,3 +46,17 @@
         _fpsHistory.Clear();
     }
 }
+
+<style>
+    .fps-counter .fps-good {
+        color: var(--success);
+    }
+    
+    .fps-counter .fps-warning {
+        color: var(--warning);
+    }
+    
+    .fps-counter .fps-bad {
+        color: var(--danger);
+    }
+</style>

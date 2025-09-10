@@ -6,14 +6,16 @@
 <div class="input-remapping">
     <h6>Input Mapping</h6>
     
-    <div class="mapping-grid">
+    <div class="input-mapping-grid">
         @foreach (var button in _gameButtons)
         {
-            <div class="mapping-item">
-                <label class="form-label small">@button:</label>
-                <button class="btn btn-sm btn-outline-secondary mapping-button @(button == _listeningFor ? "listening" : "")"
+            <div class="input-item">
+                <label style="font-size: 0.9rem; color: var(--text-secondary);">@button:</label>
+                <button class="btn-modern @(button == _listeningFor ? "listening" : "")"
+                        style="font-family: 'Monaco', 'Consolas', monospace; font-size: 0.8rem; min-height: 32px;"
                         @onclick="() => StartListening(button)"
-                        disabled="@(_listeningFor != null && _listeningFor != button)">
+                        disabled="@(_listeningFor != null && _listeningFor != button)"
+                        aria-label="Map key for @button">
                     @(_mappings.TryGetValue(button, out var key) ? FormatKey(key) : "Unbound")
                 </button>
             </div>
@@ -22,55 +24,20 @@
     
     @if (_listeningFor != null)
     {
-        <div class="listening-indicator mt-2">
-            <small class="text-primary">
-                <i class="fas fa-circle blink"></i>
+        <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-primary); border-radius: var(--border-radius); border: 1px solid var(--accent-primary);">
+            <small style="color: var(--accent-primary);">
+                <span class="blink" style="display: inline-block; width: 8px; height: 8px; background: var(--accent-primary); border-radius: 50%; margin-right: 0.5rem;"></span>
                 Press a key for <strong>@_listeningFor</strong> (Escape to cancel)
             </small>
         </div>
     }
     
-    <div class="mt-2">
-        <button class="btn btn-sm btn-outline-warning" @onclick="ResetToDefaults">
+    <div style="margin-top: 1rem;">
+        <button class="btn-modern btn-warning" @onclick="ResetToDefaults" aria-label="Reset input mappings to defaults">
             🔄 Reset to Defaults
         </button>
     </div>
 </div>
-
-<style>
-    .input-remapping .mapping-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 8px;
-        margin: 10px 0;
-    }
-    
-    .input-remapping .mapping-item {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-    
-    .input-remapping .mapping-button {
-        font-family: 'Courier New', monospace;
-        font-size: 0.8em;
-        min-height: 32px;
-    }
-    
-    .input-remapping .mapping-button.listening {
-        background-color: #e3f2fd;
-        border-color: #007bff;
-    }
-    
-    .input-remapping .listening-indicator .blink {
-        animation: blink 1s infinite;
-    }
-    
-    @@keyframes blink {
-        0%, 50% { opacity: 1; }
-        51%, 100% { opacity: 0.3; }
-    }
-</style>
 
 @code {
     [Parameter] public EventCallback<Dictionary<string, string>> OnMappingsChanged { get; set; }
@@ -148,3 +115,19 @@
         // Cleanup if needed
     }
 }
+
+<style>
+    .input-remapping .listening {
+        background: rgba(0, 212, 170, 0.1) !important;
+        border-color: var(--accent-primary) !important;
+    }
+    
+    .blink {
+        animation: blink 1s infinite;
+    }
+    
+    @@keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0.3; }
+    }
+</style>
