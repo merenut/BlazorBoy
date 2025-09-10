@@ -22,7 +22,7 @@ public class SaveStateSerializerTests
         // Assert
         Assert.NotNull(serialized);
         Assert.True(serialized.Length > 10); // Should have header + data + checksum
-        
+
         // First byte should be magic number
         Assert.Equal(0x47, serialized[0]); // 'G' for Game Boy
         Assert.Equal(1, serialized[1]); // Version
@@ -74,7 +74,7 @@ public class SaveStateSerializerTests
         // Arrange
         var saveState = CreateTestSaveState();
         byte[] serialized = SaveStateSerializer.Serialize(saveState);
-        
+
         // Corrupt the last byte (part of checksum)
         serialized[^1] = (byte)(serialized[^1] ^ 0xFF);
 
@@ -88,21 +88,21 @@ public class SaveStateSerializerTests
         // Arrange
         var saveState = CreateTestSaveState();
         byte[] serialized = SaveStateSerializer.Serialize(saveState);
-        
+
         // Remove checksum first to avoid checksum error
         byte[] dataWithoutChecksum = new byte[serialized.Length - 4];
         Array.Copy(serialized, 0, dataWithoutChecksum, 0, dataWithoutChecksum.Length);
-        
+
         // Corrupt magic number
         dataWithoutChecksum[0] = 0x00;
-        
+
         // Recalculate checksum
         using (var sha256 = System.Security.Cryptography.SHA256.Create())
         {
             byte[] hash = sha256.ComputeHash(dataWithoutChecksum);
             byte[] checksum = new byte[4];
             Array.Copy(hash, 0, checksum, 0, 4);
-            
+
             byte[] corruptedData = new byte[dataWithoutChecksum.Length + 4];
             Array.Copy(dataWithoutChecksum, 0, corruptedData, 0, dataWithoutChecksum.Length);
             Array.Copy(checksum, 0, corruptedData, dataWithoutChecksum.Length, 4);
@@ -158,7 +158,7 @@ public class SaveStateSerializerTests
         // Arrange
         byte[] testRom = CreateTestRom();
         var saveState = CreateTestSaveState();
-        
+
         // Set correct hash
         using (var sha256 = System.Security.Cryptography.SHA256.Create())
         {
@@ -179,7 +179,7 @@ public class SaveStateSerializerTests
         byte[] testRom1 = CreateTestRom();
         byte[] testRom2 = CreateTestRom();
         testRom2[0x100] = 0xFF; // Make it different
-        
+
         var saveState = CreateTestSaveState();
         using (var sha256 = System.Security.Cryptography.SHA256.Create())
         {
@@ -244,17 +244,17 @@ public class SaveStateSerializerTests
     private static byte[] CreateTestRom()
     {
         byte[] rom = new byte[0x8000]; // 32KB ROM
-        
+
         // Set title
         byte[] title = Encoding.ASCII.GetBytes("TESTGAME");
         Array.Copy(title, 0, rom, 0x134, title.Length);
-        
+
         // Set some ROM data
         rom[0x100] = 0x00; // NOP
         rom[0x101] = 0xC3; // JP
         rom[0x102] = 0x50;
         rom[0x103] = 0x01;
-        
+
         return rom;
     }
 }

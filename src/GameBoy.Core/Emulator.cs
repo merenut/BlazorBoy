@@ -1,11 +1,12 @@
 using System;
+using GameBoy.Core.Debug;
 
 namespace GameBoy.Core;
 
 /// <summary>
 /// High-level emulator facade coordinating CPU, MMU, PPU, timers, and input.
 /// </summary>
-public sealed class Emulator
+public sealed class Emulator : IDebugController
 {
     private const int CyclesPerFrame = 70224; // 154 scanlines * 456 cycles per scanline
 
@@ -17,6 +18,18 @@ public sealed class Emulator
     private readonly Apu _apu;
 
     private int _cycleAccumulator = 0;
+    private ulong _totalCycles = 0;
+
+    // Debug infrastructure
+    private bool _debugMode = false;
+    private bool _isPaused = false;
+    private readonly BreakpointManager _breakpointManager = new();
+    private readonly TraceLogger _traceLogger = new();
+    private readonly MmuMemoryReader _memoryReader;
+    private int _callDepth = 0;
+    private int _stepOutTargetDepth = -1;
+    private ushort _stepOverReturnAddress = 0;
+    private bool _stepOverActive = false;
 
     public Joypad Joypad { get; }
 
@@ -46,6 +59,9 @@ public sealed class Emulator
         _mmu.Apu = _apu;
         _mmu.Joypad = Joypad;
         _ppu.Mmu = _mmu;
+
+        // Initialize debug components
+        _memoryReader = new MmuMemoryReader(_mmu);
     }
 
     /// <summary>
@@ -470,17 +486,40 @@ public sealed class Emulator
 
         while (_cycleAccumulator < CyclesPerFrame && cyclesRun < targetCycles)
         {
-            int cycles = _cpu.Step();
-            _timer.Step(cycles);
-            if (_ppu.Step(cycles))
+            // Check debug conditions before executing
+            if (ShouldPauseExecution())
             {
-                frameCompleted = true;
+                break;
             }
-            _serial.Step(cycles);
-            _apu.Step(cycles);
-            _mmu.StepDma(cycles);
+
+            int cycles;
+            if (_debugMode)
+            {
+                // In debug mode, execute single step with full debug support
+                ExecuteSingleStep();
+                cycles = 4; // Approximate cycles for debug purposes
+            }
+            else
+            {
+                // Normal execution path (no debug overhead)
+                cycles = _cpu.Step();
+                _timer.Step(cycles);
+                if (_ppu.Step(cycles))
+                {
+                    frameCompleted = true;
+                }
+                _serial.Step(cycles);
+                _apu.Step(cycles);
+                _mmu.StepDma(cycles);
+            }
+
             _cycleAccumulator += cycles;
             cyclesRun += cycles;
+
+            if (!_debugMode)
+            {
+                _totalCycles += (ulong)cycles;
+            }
         }
 
         // If frame is complete, reset accumulator for next frame
@@ -491,5 +530,241 @@ public sealed class Emulator
         }
 
         return frameCompleted;
+    }
+
+    #region IDebugController Implementation
+
+    public bool DebugMode => _debugMode;
+    public bool IsPaused => _isPaused;
+    public BreakpointManager Breakpoints => _breakpointManager;
+    public TraceLogger TraceLogger => _traceLogger;
+
+    public void EnableDebugMode(bool enableTracing = true)
+    {
+        _debugMode = true;
+        _traceLogger.Enabled = enableTracing;
+        _isPaused = true; // Start paused when debug mode is enabled
+    }
+
+    public void DisableDebugMode()
+    {
+        _debugMode = false;
+        _isPaused = false;
+        _traceLogger.Enabled = false;
+        _traceLogger.Clear();
+        _breakpointManager.ClearAll();
+        _callDepth = 0;
+        _stepOutTargetDepth = -1;
+        _stepOverActive = false;
+    }
+
+    public void StepInstruction()
+    {
+        if (!_debugMode) return;
+
+        _isPaused = false;
+        ExecuteSingleStep();
+        _isPaused = true;
+    }
+
+    public void StepOver()
+    {
+        if (!_debugMode) return;
+
+        // Check if current instruction is a CALL
+        byte currentOpcode = _mmu.ReadByte(_cpu.Regs.PC);
+
+        // CALL instructions: 0xC4, 0xCC, 0xCD, 0xD4, 0xDC
+        bool isCall = currentOpcode == 0xCD || // CALL a16
+                     currentOpcode == 0xC4 || // CALL NZ,a16  
+                     currentOpcode == 0xCC || // CALL Z,a16
+                     currentOpcode == 0xD4 || // CALL NC,a16
+                     currentOpcode == 0xDC;   // CALL C,a16
+
+        if (isCall)
+        {
+            // Set up step-over: run until we return to the instruction after this CALL
+            var instruction = OpcodeTable.Primary[currentOpcode];
+            if (instruction.HasValue)
+            {
+                _stepOverReturnAddress = (ushort)(_cpu.Regs.PC + instruction.Value.Length);
+                _stepOverActive = true;
+                _isPaused = false;
+                ContinueUntilBreak();
+            }
+            else
+            {
+                // Fallback to single step
+                StepInstruction();
+            }
+        }
+        else
+        {
+            // Not a CALL, just single step
+            StepInstruction();
+        }
+    }
+
+    public void StepOut()
+    {
+        if (!_debugMode) return;
+
+        _stepOutTargetDepth = _callDepth - 1;
+        _isPaused = false;
+        ContinueUntilBreak();
+    }
+
+    public void ContinueUntilBreak()
+    {
+        if (!_debugMode) return;
+
+        _isPaused = false;
+
+        // Continue execution until a breakpoint is hit or user pauses
+        // This will be called from the main execution loop
+    }
+
+    public void Pause()
+    {
+        if (_debugMode)
+        {
+            _isPaused = true;
+        }
+    }
+
+    public DebugState CaptureState()
+    {
+        var cpuState = new CpuState(_cpu.Regs, _cpu.InterruptsEnabled, _cpu.IsHalted);
+
+        var ppuState = new PpuState(
+            _mmu.ReadByte(IoRegs.LCDC),
+            _mmu.ReadByte(IoRegs.STAT),
+            _mmu.ReadByte(IoRegs.SCY),
+            _mmu.ReadByte(IoRegs.SCX),
+            _mmu.ReadByte(IoRegs.LY),
+            _mmu.ReadByte(IoRegs.LYC),
+            _mmu.ReadByte(IoRegs.WY),
+            _mmu.ReadByte(IoRegs.WX),
+            _mmu.ReadByte(IoRegs.BGP),
+            _mmu.ReadByte(IoRegs.OBP0),
+            _mmu.ReadByte(IoRegs.OBP1));
+
+        var timerState = new TimerState(
+            _mmu.ReadByte(IoRegs.DIV),
+            _mmu.ReadByte(IoRegs.TIMA),
+            _mmu.ReadByte(IoRegs.TMA),
+            _mmu.ReadByte(IoRegs.TAC));
+
+        var interruptState = new InterruptState(
+            _mmu.ReadByte(0xFFFF), // IE
+            _mmu.ReadByte(IoRegs.IF)); // IF
+
+        return new DebugState(cpuState, ppuState, timerState, interruptState, _totalCycles);
+    }
+
+    public MemoryBlock ReadMemory(ushort startAddress, int length)
+    {
+        length = Math.Min(length, 0x10000 - startAddress); // Don't read past address space
+        var data = new byte[length];
+
+        for (int i = 0; i < length; i++)
+        {
+            data[i] = _mmu.ReadByte((ushort)(startAddress + i));
+        }
+
+        return new MemoryBlock(startAddress, data);
+    }
+
+    public void WriteMemory(ushort address, byte value)
+    {
+        _mmu.WriteByte(address, value);
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Executes a single CPU step with debug support.
+    /// </summary>
+    private void ExecuteSingleStep()
+    {
+        ushort oldPC = _cpu.Regs.PC;
+        byte opcode = _mmu.ReadByte(oldPC);
+
+        // Log trace entry before execution
+        if (_traceLogger.Enabled)
+        {
+            _traceLogger.Log(oldPC, opcode, _cpu.Regs, _totalCycles);
+        }
+
+        // Track call depth for step-out functionality
+        TrackCallDepth(opcode);
+
+        // Execute the instruction
+        int cycles = _cpu.Step();
+        _totalCycles += (ulong)cycles;
+
+        // Update other components
+        _timer.Step(cycles);
+        _ppu.Step(cycles);
+        _serial.Step(cycles);
+        _apu.Step(cycles);
+        _mmu.StepDma(cycles);
+    }
+
+    /// <summary>
+    /// Tracks call depth for step-out functionality.
+    /// </summary>
+    private void TrackCallDepth(byte opcode)
+    {
+        // CALL instructions increase call depth
+        if (opcode == 0xCD || opcode == 0xC4 || opcode == 0xCC ||
+            opcode == 0xD4 || opcode == 0xDC)
+        {
+            _callDepth++;
+        }
+        // RET instructions decrease call depth
+        else if (opcode == 0xC9 || opcode == 0xC0 || opcode == 0xC8 ||
+                opcode == 0xD0 || opcode == 0xD8)
+        {
+            _callDepth = Math.Max(0, _callDepth - 1);
+        }
+        // RST instructions also increase call depth
+        else if ((opcode & 0xC7) == 0xC7) // RST instructions: 0xC7, 0xCF, 0xD7, 0xDF, 0xE7, 0xEF, 0xF7, 0xFF
+        {
+            _callDepth++;
+        }
+    }
+
+    /// <summary>
+    /// Checks if execution should be paused due to debug conditions.
+    /// </summary>
+    private bool ShouldPauseExecution()
+    {
+        if (!_debugMode) return false;
+
+        // Check for explicit pause
+        if (_isPaused) return true;
+
+        // Check step-over completion
+        if (_stepOverActive && _cpu.Regs.PC == _stepOverReturnAddress)
+        {
+            _stepOverActive = false;
+            return true;
+        }
+
+        // Check step-out completion
+        if (_stepOutTargetDepth >= 0 && _callDepth <= _stepOutTargetDepth)
+        {
+            _stepOutTargetDepth = -1;
+            return true;
+        }
+
+        // Check breakpoints
+        if (_breakpointManager.ShouldBreak(_cpu.Regs.PC, _cpu.Regs, _memoryReader))
+        {
+            return true;
+        }
+
+        return false;
     }
 }

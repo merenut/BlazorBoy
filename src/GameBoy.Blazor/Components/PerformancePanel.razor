@@ -1,0 +1,217 @@
+@using GameBoy.Core.Debug
+
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">Performance Monitor</h6>
+    </div>
+    <div class="card-body">
+        @if (DebugState != null)
+        {
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="mb-2">Execution Stats</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="fw-bold">Total Cycles:</td>
+                            <td class="font-monospace">@DebugState.Value.TotalCycles.ToString("N0")</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Current PC:</td>
+                            <td class="font-monospace">0x@(DebugState.Value.Cpu.PC.ToString("X4"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Emulator Status:</td>
+                            <td class="@(Emulator?.IsPaused == true ? "text-warning" : "text-success")">
+                                @(Emulator?.IsPaused == true ? "PAUSED" : "RUNNING")
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Debug Mode:</td>
+                            <td class="@(Emulator?.DebugMode == true ? "text-info" : "text-muted")">
+                                @(Emulator?.DebugMode == true ? "ENABLED" : "DISABLED")
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="mb-2">Timing Info</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="fw-bold">Frames:</td>
+                            <td class="font-monospace">@(EstimatedFrames.ToString("N0"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Est. IPS:</td>
+                            <td class="font-monospace">@(EstimatedIPS.ToString("N0"))</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Frame Progress:</td>
+                            <td>
+                                <div class="progress" style="height: 15px;">
+                                    <div class="progress-bar" style="width: @(FrameProgress)%">
+                                        @(FrameProgress.ToString("F1"))%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">State Captured:</td>
+                            <td class="text-muted small">@DebugState.Value.CapturedAt.ToString("HH:mm:ss.fff")</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <h6 class="mb-2">Memory Regions</h6>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-primary" @onclick='() => ShowMemoryStats("ROM")'>
+                            ROM (0x0000-0x7FFF)
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" @onclick='() => ShowMemoryStats("VRAM")'>
+                            VRAM (0x8000-0x9FFF)
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" @onclick='() => ShowMemoryStats("WRAM")'>
+                            WRAM (0xC000-0xDFFF)
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" @onclick='() => ShowMemoryStats("HRAM")'>
+                            HRAM (0xFF80-0xFFFE)
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="mb-2">Debug Features</h6>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <span class="badge @(Emulator?.Breakpoints.TotalCount > 0 ? "bg-danger" : "bg-secondary")">
+                            @(Emulator?.Breakpoints.TotalCount ?? 0) Breakpoints
+                        </span>
+                        <span class="badge @(Emulator?.TraceLogger.Enabled == true ? "bg-success" : "bg-secondary")">
+                            Trace @(Emulator?.TraceLogger.Enabled == true ? "ON" : "OFF")
+                        </span>
+                        <span class="badge bg-info">
+                            @(Emulator?.TraceLogger.Count ?? 0)/@(Emulator?.TraceLogger.Capacity ?? 0) Log Entries
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(MemoryStatsMessage))
+            {
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="alert alert-info alert-dismissible">
+                            <strong>Memory Stats:</strong> @MemoryStatsMessage
+                            <button type="button" class="btn-close" @onclick="ClearMemoryStats"></button>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="text-muted text-center py-4">
+                <p>No performance data available.</p>
+                <p><small>Debug state needs to be captured to show performance metrics.</small></p>
+            </div>
+        }
+    </div>
+    <div class="card-footer">
+        <div class="row">
+            <div class="col-md-6">
+                <small class="text-muted">
+                    <strong>Target Performance:</strong><br>
+                    4.19 MHz CPU • ~59.7 FPS • 70,224 cycles/frame
+                </small>
+            </div>
+            <div class="col-md-6 text-end">
+                <small class="text-muted">
+                    <strong>Overhead:</strong>
+                    @if (Emulator?.DebugMode == true)
+                    {
+                        <span class="text-warning">Debug mode active</span>
+                    }
+                    else
+                    {
+                        <span class="text-success">Minimal overhead</span>
+                    }
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IDebugController? Emulator { get; set; }
+    [Parameter] public DebugState? DebugState { get; set; }
+
+    private string MemoryStatsMessage = "";
+
+    private const ulong CyclesPerFrame = 70224;
+    private const double TargetIPS = 4194304.0; // 4.19 MHz
+
+    private ulong EstimatedFrames => DebugState?.TotalCycles / CyclesPerFrame ?? 0;
+    
+    private double EstimatedIPS
+    {
+        get
+        {
+            if (DebugState == null) return 0;
+            
+            // This is a rough estimate based on total cycles
+            // In a real implementation, you'd track actual elapsed time
+            var elapsedSeconds = (DateTime.UtcNow - DebugState.Value.CapturedAt).TotalSeconds + 1.0; // Avoid division by zero
+            return DebugState.Value.TotalCycles / elapsedSeconds;
+        }
+    }
+
+    private double FrameProgress
+    {
+        get
+        {
+            if (DebugState == null) return 0;
+            var cyclesInCurrentFrame = DebugState.Value.TotalCycles % CyclesPerFrame;
+            return (cyclesInCurrentFrame / (double)CyclesPerFrame) * 100.0;
+        }
+    }
+
+    private void ShowMemoryStats(string region)
+    {
+        if (Emulator == null)
+        {
+            MemoryStatsMessage = "No emulator available for memory analysis.";
+            return;
+        }
+
+        try
+        {
+            var (startAddress, length, description) = region switch
+            {
+                "ROM" => ((ushort)0x0000, 0x8000, "ROM Bank 0-1"),
+                "VRAM" => ((ushort)0x8000, 0x2000, "Video RAM"),
+                "WRAM" => ((ushort)0xC000, 0x2000, "Work RAM"),
+                "HRAM" => ((ushort)0xFF80, 0x7F, "High RAM"),
+                _ => ((ushort)0x0000, 0x100, "Unknown Region")
+            };
+
+            var memoryBlock = Emulator.ReadMemory(startAddress, Math.Min(length, 1024)); // Sample first 1KB
+            var nonZeroBytes = memoryBlock.Data.Count(b => b != 0);
+            var utilizationPercent = (nonZeroBytes / (double)memoryBlock.Length) * 100.0;
+
+            MemoryStatsMessage = $"{description} (0x{startAddress:X4}-0x{startAddress + length - 1:X4}): " +
+                               $"{nonZeroBytes}/{memoryBlock.Length} bytes non-zero ({utilizationPercent:F1}% utilization)";
+        }
+        catch (Exception ex)
+        {
+            MemoryStatsMessage = $"Error reading {region} memory: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearMemoryStats()
+    {
+        MemoryStatsMessage = "";
+        StateHasChanged();
+    }
+}

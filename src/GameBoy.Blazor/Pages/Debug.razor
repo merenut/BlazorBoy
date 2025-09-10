@@ -1,0 +1,266 @@
+@page "/debug"
+@using GameBoy.Core
+@using GameBoy.Core.Debug
+@using GameBoy.Blazor.Components
+@inject Emulator Emulator
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Debug Tooling</h2>
+            <p class="text-muted">Professional-grade debugging interface for the BlazorBoy Game Boy emulator.</p>
+        </div>
+    </div>
+
+    <!-- Debug Controls -->
+    <div class="row mb-3">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Execution Control</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="btn-group" role="group">
+                                <button class="btn @(Emulator.DebugMode ? "btn-success" : "btn-outline-success")" 
+                                        @onclick="ToggleDebugMode">
+                                    @(Emulator.DebugMode ? "Debug ON" : "Enable Debug")
+                                </button>
+                                <button class="btn @(Emulator.IsPaused ? "btn-warning" : "btn-outline-secondary")" 
+                                        @onclick="TogglePause" disabled="@(!Emulator.DebugMode)">
+                                    @(Emulator.IsPaused ? "PAUSED" : "RUNNING")
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-primary" @onclick="StepInstruction" 
+                                        disabled="@(!Emulator.DebugMode || !Emulator.IsPaused)"
+                                        title="Execute one instruction">
+                                    <i class="fas fa-step-forward"></i> Step
+                                </button>
+                                <button class="btn btn-info" @onclick="StepOver" 
+                                        disabled="@(!Emulator.DebugMode || !Emulator.IsPaused)"
+                                        title="Step over CALL instructions">
+                                    <i class="fas fa-arrow-right"></i> Step Over
+                                </button>
+                                <button class="btn btn-warning" @onclick="StepOut" 
+                                        disabled="@(!Emulator.DebugMode || !Emulator.IsPaused)"
+                                        title="Step out of current function">
+                                    <i class="fas fa-arrow-up"></i> Step Out
+                                </button>
+                                <button class="btn btn-success" @onclick="Continue" 
+                                        disabled="@(!Emulator.DebugMode || !Emulator.IsPaused)"
+                                        title="Continue execution until breakpoint">
+                                    <i class="fas fa-play"></i> Continue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(StatusMessage))
+                    {
+                        <div class="mt-2">
+                            <div class="alert alert-info alert-dismissible">
+                                @StatusMessage
+                                <button type="button" class="btn-close" @onclick="ClearStatusMessage"></button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Debug Interface -->
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-lg-6">
+            <!-- Registers Panel -->
+            <div class="mb-3">
+                <RegistersPanel CpuState="@CurrentDebugState?.Cpu" />
+            </div>
+            
+            <!-- PPU State Panel -->
+            <div class="mb-3">
+                <PpuStatePanel PpuState="@CurrentDebugState?.Ppu" />
+            </div>
+            
+            <!-- Performance Panel -->
+            <div class="mb-3">
+                <PerformancePanel Emulator="@Emulator" DebugState="@CurrentDebugState" />
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-6">
+            <!-- Disassembly View -->
+            <div class="mb-3">
+                <DisassemblyView Emulator="@Emulator" DebugState="@CurrentDebugState" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Row -->
+    <div class="row">
+        <!-- Memory View -->
+        <div class="col-lg-6">
+            <div class="mb-3">
+                <MemoryView Emulator="@Emulator" />
+            </div>
+        </div>
+
+        <!-- Debug Tools -->
+        <div class="col-lg-6">
+            <!-- Breakpoints Panel -->
+            <div class="mb-3">
+                <BreakpointsPanel Emulator="@Emulator" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Trace Log (Full Width) -->
+    <div class="row">
+        <div class="col-12">
+            <div class="mb-3">
+                <TraceLogPanel Emulator="@Emulator" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private DebugState? CurrentDebugState;
+    private string StatusMessage = "";
+    private System.Threading.Timer? _refreshTimer;
+
+    protected override void OnInitialized()
+    {
+        // Set up automatic refresh when in debug mode
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            if (Emulator.DebugMode)
+            {
+                await InvokeAsync(() =>
+                {
+                    RefreshDebugState();
+                    StateHasChanged();
+                });
+            }
+        }, null, TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(250));
+        
+        RefreshDebugState();
+    }
+
+    private void RefreshDebugState()
+    {
+        try
+        {
+            if (Emulator.DebugMode)
+            {
+                CurrentDebugState = Emulator.CaptureState();
+            }
+            else
+            {
+                CurrentDebugState = null;
+            }
+        }
+        catch
+        {
+            CurrentDebugState = null;
+        }
+    }
+
+    private void ToggleDebugMode()
+    {
+        if (Emulator.DebugMode)
+        {
+            Emulator.DisableDebugMode();
+            StatusMessage = "Debug mode disabled. Emulator running at full speed.";
+        }
+        else
+        {
+            Emulator.EnableDebugMode(enableTracing: true);
+            StatusMessage = "Debug mode enabled. Emulator is paused and ready for debugging.";
+        }
+        
+        RefreshDebugState();
+        StateHasChanged();
+    }
+
+    private void TogglePause()
+    {
+        if (!Emulator.DebugMode) return;
+
+        if (Emulator.IsPaused)
+        {
+            Emulator.ContinueUntilBreak();
+            StatusMessage = "Emulator resumed. Will pause at next breakpoint.";
+        }
+        else
+        {
+            Emulator.Pause();
+            StatusMessage = "Emulator paused.";
+        }
+        
+        RefreshDebugState();
+        StateHasChanged();
+    }
+
+    private void StepInstruction()
+    {
+        if (!Emulator.DebugMode || !Emulator.IsPaused) return;
+
+        var oldPC = CurrentDebugState?.Cpu.PC ?? 0;
+        Emulator.StepInstruction();
+        RefreshDebugState();
+        
+        var newPC = CurrentDebugState?.Cpu.PC ?? 0;
+        StatusMessage = $"Stepped: 0x{oldPC:X4} → 0x{newPC:X4}";
+        StateHasChanged();
+    }
+
+    private void StepOver()
+    {
+        if (!Emulator.DebugMode || !Emulator.IsPaused) return;
+
+        Emulator.StepOver();
+        RefreshDebugState();
+        StatusMessage = "Step over executed.";
+        StateHasChanged();
+    }
+
+    private void StepOut()
+    {
+        if (!Emulator.DebugMode || !Emulator.IsPaused) return;
+
+        Emulator.StepOut();
+        RefreshDebugState();
+        StatusMessage = "Step out initiated. Will pause when returning from current function.";
+        StateHasChanged();
+    }
+
+    private void Continue()
+    {
+        if (!Emulator.DebugMode || !Emulator.IsPaused) return;
+
+        Emulator.ContinueUntilBreak();
+        RefreshDebugState();
+        StatusMessage = "Execution continued. Will pause at next breakpoint.";
+        StateHasChanged();
+    }
+
+    private void ClearStatusMessage()
+    {
+        StatusMessage = "";
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+}

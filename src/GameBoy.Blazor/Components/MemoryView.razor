@@ -1,0 +1,102 @@
+@using GameBoy.Core.Debug
+@using GameBoy.Core
+
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">Memory Viewer</h6>
+    </div>
+    <div class="card-body">
+        @if (MemoryData != null && MemoryData.Length > 0)
+        {
+            <div class="font-monospace" style="font-size: 0.8em;">
+                @for (int i = 0; i < Math.Min(16, MemoryData.Length / 16); i++)
+                {
+                    var rowAddress = CurrentAddress + (i * 16);
+                    <div class="mb-1">
+                        <span class="fw-bold me-2">0x@(rowAddress.ToString("X4")):</span>
+                        @for (int j = 0; j < 16 && (i * 16 + j) < MemoryData.Length; j++)
+                        {
+                            var byteValue = MemoryData[i * 16 + j];
+                            <span class="me-1">@byteValue.ToString("X2")</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">No memory data available.</p>
+        }
+    </div>
+    <div class="card-footer">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text">Go to:</span>
+            <input type="text" class="form-control font-monospace" 
+                   @bind="AddressInput" @onkeypress="OnAddressKeyPress"
+                   placeholder="0x0000" maxlength="6">
+            <button class="btn btn-primary" @onclick="GoToAddress">Go</button>
+        </div>
+        <small class="text-muted mt-2 d-block">
+            Showing @(MemoryData?.Length ?? 0) bytes from 0x@(CurrentAddress.ToString("X4"))
+        </small>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IDebugController? Emulator { get; set; }
+
+    private ushort CurrentAddress = 0x0000;
+    private string AddressInput = "";
+    private byte[]? MemoryData;
+    private const int BytesPerPage = 256;
+
+    protected override void OnParametersSet()
+    {
+        RefreshMemory();
+    }
+
+    private void RefreshMemory()
+    {
+        if (Emulator == null)
+        {
+            MemoryData = null;
+            return;
+        }
+
+        try
+        {
+            var memoryBlock = Emulator.ReadMemory(CurrentAddress, BytesPerPage);
+            MemoryData = memoryBlock.Data;
+        }
+        catch
+        {
+            MemoryData = null;
+        }
+    }
+
+    private void GoToAddress()
+    {
+        if (string.IsNullOrWhiteSpace(AddressInput)) return;
+
+        var input = AddressInput.Trim();
+        if (input.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            input = input.Substring(2);
+        }
+
+        if (ushort.TryParse(input, System.Globalization.NumberStyles.HexNumber, null, out ushort address))
+        {
+            CurrentAddress = (ushort)(address & 0xFFF0);
+            RefreshMemory();
+            AddressInput = "";
+        }
+    }
+
+    private void OnAddressKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            GoToAddress();
+        }
+    }
+}
