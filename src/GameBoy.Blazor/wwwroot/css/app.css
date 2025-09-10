@@ -653,3 +653,25 @@ code {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* ===== ROM Loader Collapsed State ===== */
+.rom-loader-collapsed {
+    background: var(--bg-tertiary);
+    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+}
+
+.loaded-rom-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* ===== Small Button Style ===== */
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: var(--border-radius-sm);
+}
+}

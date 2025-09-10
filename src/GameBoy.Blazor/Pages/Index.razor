@@ -23,15 +23,7 @@
         <RomLoader OnRomLoaded="OnRomLoaded" @ref="_romLoader" />
     </div>
 
-    <!-- Basic Controls -->
-    <div class="basic-controls">
-        <EmulatorControls HasRom="_hasRom" 
-                        IsRunning="_isRunning"
-                        OnToggleRunPause="ToggleRunPause"
-                        OnReset="ResetEmulator"
-                        OnSpeedChangeCallback="OnSpeedChanged" 
-                        @ref="_emulatorControls" />
-    </div>
+
 
     <!-- Game Screen - Primary Focus -->
         <div class="game-screen-container">
@@ -76,6 +68,17 @@
     </div>
     
     <div class="overlay-content">
+        <!-- Emulator Controls -->
+        <div class="overlay-section">
+            <h6>Emulator Controls</h6>
+            <EmulatorControls HasRom="_hasRom" 
+                            IsRunning="_isRunning"
+                            OnToggleRunPause="ToggleRunPause"
+                            OnReset="ResetEmulator"
+                            OnSpeedChangeCallback="OnSpeedChanged" 
+                            @ref="_emulatorControls" />
+        </div>
+
         <!-- Audio Controls -->
         <div class="overlay-section">
             <h6>Audio</h6>
