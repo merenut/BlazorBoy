@@ -35,6 +35,9 @@ public sealed class Ppu
 
     private readonly InterruptController _interruptController;
 
+    // Reusable list to avoid allocations during sprite rendering
+    private readonly List<Sprite> _spritesOnScanline = new();
+
     // PPU state
     private int _cycleCounter = 0;
     private int _scanlineCycles = 0;
@@ -77,6 +80,22 @@ public sealed class Ppu
         FrameBuffer[bufferIndex] = argbColor;
 
         // Write to RGBA byte buffer (optimized for JavaScript)
+        int rgbaIndex = bufferIndex * 4;
+        FrameBufferRgba[rgbaIndex] = (byte)((argbColor >> 16) & 0xFF);     // R
+        FrameBufferRgba[rgbaIndex + 1] = (byte)((argbColor >> 8) & 0xFF);  // G
+        FrameBufferRgba[rgbaIndex + 2] = (byte)(argbColor & 0xFF);         // B
+        FrameBufferRgba[rgbaIndex + 3] = (byte)((argbColor >> 24) & 0xFF); // A
+    }
+
+    /// <summary>
+    /// Writes a pixel directly to RGBA buffer for optimal performance.
+    /// Use this when ARGB compatibility is not needed.
+    /// </summary>
+    /// <param name="bufferIndex">Index in the frame buffer (0 to ScreenWidth*ScreenHeight-1)</param>
+    /// <param name="argbColor">ARGB color value</param>
+    private void WritePixelRgbaOnly(int bufferIndex, int argbColor)
+    {
+        // Write only to RGBA byte buffer for optimal performance
         int rgbaIndex = bufferIndex * 4;
         FrameBufferRgba[rgbaIndex] = (byte)((argbColor >> 16) & 0xFF);     // R
         FrameBufferRgba[rgbaIndex + 1] = (byte)((argbColor >> 8) & 0xFF);  // G
@@ -341,9 +360,9 @@ public sealed class Ppu
             int colorIndex = GetTilePixel(tileIndex, pixelX, pixelY);
             int color = _bgp.GetRgbaColor(colorIndex);
 
-            // Write to frame buffer
+            // Write to frame buffer using optimized method
             int bufferIndex = scanline * ScreenWidth + x;
-            WritePixel(bufferIndex, color);
+            WritePixelRgbaOnly(bufferIndex, color);
         }
     }
 
@@ -376,9 +395,9 @@ public sealed class Ppu
             int colorIndex = GetTilePixel(tileIndex, pixelX, pixelY);
             int color = _bgp.GetRgbaColor(colorIndex);
 
-            // Write to frame buffer
+            // Write to frame buffer using optimized method
             int bufferIndex = scanline * ScreenWidth + x;
-            WritePixel(bufferIndex, color);
+            WritePixelRgbaOnly(bufferIndex, color);
         }
     }
 
@@ -390,10 +409,10 @@ public sealed class Ppu
         if (Mmu == null)
             return;
 
-        // Find up to 10 sprites that overlap this scanline
-        var sprites = new List<Sprite>();
+        // Find up to 10 sprites that overlap this scanline (reuse list to avoid allocation)
+        _spritesOnScanline.Clear();
 
-        for (int i = 0; i < 40 && sprites.Count < 10; i++)
+        for (int i = 0; i < 40 && _spritesOnScanline.Count < 10; i++)
         {
             int oamAddr = 0xFE00 + (i * 4);
             var sprite = new Sprite(
@@ -405,14 +424,14 @@ public sealed class Ppu
 
             if (sprite.IsVisibleOnScanline(scanline, _lcdc.SpriteHeight))
             {
-                sprites.Add(sprite);
+                _spritesOnScanline.Add(sprite);
             }
         }
 
         // Render sprites in reverse order (lower index = higher priority)
-        for (int i = sprites.Count - 1; i >= 0; i--)
+        for (int i = _spritesOnScanline.Count - 1; i >= 0; i--)
         {
-            RenderSprite(sprites[i], scanline);
+            RenderSprite(_spritesOnScanline[i], scanline);
         }
     }
 
@@ -455,7 +474,7 @@ public sealed class Ppu
             int bufferIndex = scanline * ScreenWidth + screenX;
             if (!sprite.BehindBackground || IsBackgroundColorZero(bufferIndex))
             {
-                WritePixel(bufferIndex, color);
+                WritePixelRgbaOnly(bufferIndex, color);
             }
         }
     }
@@ -528,7 +547,7 @@ public sealed class Ppu
         int startIndex = scanline * ScreenWidth;
         for (int i = 0; i < ScreenWidth; i++)
         {
-            WritePixel(startIndex + i, color);
+            WritePixelRgbaOnly(startIndex + i, color);
         }
     }
 

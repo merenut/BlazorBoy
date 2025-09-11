@@ -55,7 +55,7 @@ public class TetrisFreezeInvestigationTests
         }
 
         // Test should not detect a freeze - if it does, we have identified the issue
-        Assert.False(freezeDetected, 
+        Assert.False(freezeDetected,
             $"Tetris ROM froze after {freezeDetector.FreezeFrame} frames at PC={freezeDetector.FreezePC:X4}. " +
             "Check logged interrupt states for root cause analysis.");
     }
@@ -67,7 +67,7 @@ public class TetrisFreezeInvestigationTests
     {
         var cpu = emulator.Cpu;
         var ic = emulator.InterruptController;
-        
+
         Console.WriteLine($"=== FREEZE DETECTED AT FRAME {frame} ===");
         Console.WriteLine($"PC: 0x{cpu.Regs.PC:X4}");
         Console.WriteLine($"IME: {cpu.InterruptsEnabled}");
@@ -77,17 +77,17 @@ public class TetrisFreezeInvestigationTests
         Console.WriteLine($"Registers: A={cpu.Regs.A:X2} F={cpu.Regs.F:X2} B={cpu.Regs.B:X2} C={cpu.Regs.C:X2}");
         Console.WriteLine($"           D={cpu.Regs.D:X2} E={cpu.Regs.E:X2} H={cpu.Regs.H:X2} L={cpu.Regs.L:X2}");
         Console.WriteLine($"           SP={cpu.Regs.SP:X4}");
-        
+
         // Log recent interrupt state changes
         Console.WriteLine("\n=== RECENT INTERRUPT STATE CHANGES ===");
         logger.DumpRecentChanges();
-        
+
         // Try to disassemble instruction at freeze PC
         try
         {
             byte opcode = emulator.Mmu.ReadByte(cpu.Regs.PC);
             Console.WriteLine($"\nInstruction at freeze PC: 0x{opcode:X2}");
-            
+
             // Check for common freeze patterns
             if (opcode == 0xA7) // AND A
             {
@@ -112,7 +112,7 @@ public class FreezeDetector
 {
     private readonly Dictionary<ushort, int> _pcHitCounts = new();
     private const int FreezeThreshold = 100; // If PC repeats 100 times, consider it frozen
-    
+
     public bool IsFrozen { get; private set; }
     public ushort FreezePC { get; private set; }
     public int FreezeFrame { get; private set; }
@@ -150,7 +150,7 @@ public class InterruptStateLogger
     {
         var ic = emulator.InterruptController;
         var cpu = emulator.Cpu;
-        
+
         byte currentIF = ic.IF;
         byte currentIE = ic.IE;
         bool currentIME = cpu.InterruptsEnabled;

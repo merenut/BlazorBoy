@@ -3,6 +3,7 @@
 @using GameBoy.Core.Persistence
 @using GameBoy.Blazor.Services
 @using GameBoy.Blazor.Components
+@using System.IO
 @inject Emulator Emulator
 @inject IPersistenceService PersistenceService
 @inject ISettingsService SettingsService
@@ -104,6 +105,7 @@
             <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
                 <button class="btn-modern" @onclick="CreateTestPattern">Test VRAM</button>
                 <button class="btn-modern" @onclick="CreateDirectTestPattern">Test Direct</button>
+                <button class="btn-modern btn-warning" @onclick="LoadTetrisForTesting">🎮 Load Test ROM</button>
                 <button class="btn-modern btn-info" @onclick="ShowDebugInfo">Debug Info</button>
                 <button class="btn-modern btn-primary" @onclick="NavigateToDebugPage">🔧 Debug Page</button>
             </div>
@@ -140,6 +142,17 @@
     // FPS tracking
     private double _lastFps;
     private long _lastTs;
+    
+    // Enhanced adaptive performance system
+    private int _currentCyclesPerFrame = 17500; // Start conservatively at 25% accuracy for WebAssembly
+    private const int FullAccuracyCycles = 70224; // Full Game Boy accuracy
+    private const int MinCyclesPerFrame = 12000; // ~17% accuracy for emergency performance mode
+    private const double TargetFps = 35.0; // More realistic target for WebAssembly
+    private const double FpsAdjustmentThreshold = 3.0; // Smaller threshold for faster response
+    private const double EmergencyFpsThreshold = 15.0; // Emergency threshold for immediate scaling
+    private int _performanceFrameCounter = 0;
+    private const int PerformanceAdjustmentInterval = 10; // Adjust every 10 frames (~0.17 seconds) for faster response
+    private double _recentFpsHistory = 0.0; // Track recent FPS for smoother adjustments
 
     // Debug
     private bool _showDebugInfo = false;
@@ -187,8 +200,16 @@
         // Skip emulation if we're in test mode or paused
         if (!_isInTestMode && _isRunning && _hasRom)
         {
-            // Apply speed multiplier
-            int cyclesPerFrame = (int)(17500 * _speedMultiplier); // Adjusted for speed
+            // Adaptive performance adjustment
+            _performanceFrameCounter++;
+            if (_performanceFrameCounter >= PerformanceAdjustmentInterval)
+            {
+                AdjustPerformanceBasedOnFps();
+                _performanceFrameCounter = 0;
+            }
+            
+            // Apply speed multiplier with adaptive cycles
+            int cyclesPerFrame = (int)(_currentCyclesPerFrame * _speedMultiplier);
             bool frameReady = Emulator.StepFrame(cyclesPerFrame);
             
             if (frameReady)
@@ -220,7 +241,7 @@
         }
     }
 
-    // ROM loading
+    // ROM loading with adaptive performance initialization
     private async Task OnRomLoaded((byte[] data, string fileName) romData)
     {
         // Save current battery RAM before loading new ROM
@@ -235,11 +256,42 @@
         // Load battery RAM for this ROM if it exists
         await LoadBatteryRamForCurrentRom();
         
+        // Initialize adaptive performance based on ROM complexity
+        InitializeAdaptivePerformanceForRom(romData.fileName);
+        
         _hasRom = true;
         _isRunning = true; // Auto-start when ROM loads
         _isInTestMode = false;
         
         StateHasChanged();
+    }
+    
+    /// <summary>
+    /// Initialize performance settings based on ROM complexity
+    /// </summary>
+    private void InitializeAdaptivePerformanceForRom(string fileName)
+    {
+        // Reset performance tracking
+        _performanceFrameCounter = 0;
+        _recentFpsHistory = 0.0;
+        
+        // Detect complex ROMs that need conservative initial settings
+        string lowerFileName = fileName.ToLowerInvariant();
+        if (lowerFileName.Contains("tetris") || 
+            lowerFileName.Contains("zelda") || 
+            lowerFileName.Contains("mario") ||
+            lowerFileName.Contains("pokemon"))
+        {
+            // Start very conservatively for complex ROMs
+            _currentCyclesPerFrame = MinCyclesPerFrame;
+            Console.WriteLine($"Complex ROM detected ({fileName}): Starting with minimum cycles {_currentCyclesPerFrame}");
+        }
+        else
+        {
+            // Standard starting point for simpler ROMs
+            _currentCyclesPerFrame = 17500; // 25% accuracy
+            Console.WriteLine($"Standard ROM loaded ({fileName}): Starting with {_currentCyclesPerFrame} cycles");
+        }
     }
 
     // Emulator control
@@ -261,6 +313,56 @@
     {
         _speedMultiplier = speed;
         await SettingsService.SetSpeedMultiplierAsync(speed);
+    }
+
+    /// <summary>
+    /// Enhanced adaptive performance adjustment with aggressive WebAssembly optimization
+    /// </summary>
+    private void AdjustPerformanceBasedOnFps()
+    {
+        if (_lastFps <= 0) return; // No FPS data yet
+        
+        // Update FPS history for smoother adjustments
+        _recentFpsHistory = _recentFpsHistory * 0.7 + _lastFps * 0.3;
+        double workingFps = _recentFpsHistory > 0 ? _recentFpsHistory : _lastFps;
+        
+        // Emergency scaling for severe performance issues
+        if (workingFps < EmergencyFpsThreshold && _currentCyclesPerFrame > MinCyclesPerFrame)
+        {
+            // Immediately drop to minimum for recovery
+            _currentCyclesPerFrame = MinCyclesPerFrame;
+            Console.WriteLine($"Emergency scaling: FPS {workingFps:F1} -> Cycles reduced to {_currentCyclesPerFrame}");
+            return;
+        }
+        
+        double fpsDifference = workingFps - TargetFps;
+        
+        // Aggressive performance mode - larger adjustments for poor performance
+        if (fpsDifference < -FpsAdjustmentThreshold && _currentCyclesPerFrame > MinCyclesPerFrame)
+        {
+            // Scale reduction based on how far below target we are
+            double severityFactor = Math.Max(1.0, Math.Abs(fpsDifference) / 10.0);
+            int baseReduction = Math.Max(1500, _currentCyclesPerFrame / 8); // Larger base reduction
+            int reduction = (int)(baseReduction * severityFactor);
+            
+            _currentCyclesPerFrame = Math.Max(MinCyclesPerFrame, _currentCyclesPerFrame - reduction);
+            Console.WriteLine($"Performance mode: FPS {workingFps:F1} -> Cycles reduced by {reduction} to {_currentCyclesPerFrame}");
+        }
+        // Conservative accuracy mode - smaller increases for good performance
+        else if (fpsDifference > FpsAdjustmentThreshold && _currentCyclesPerFrame < FullAccuracyCycles)
+        {
+            // Only increase if we're well above target with sustained good performance
+            if (workingFps > TargetFps + 8.0) // Require 8+ FPS above target for increases
+            {
+                int increase = Math.Max(800, _currentCyclesPerFrame / 15); // Smaller, careful increases
+                _currentCyclesPerFrame = Math.Min(FullAccuracyCycles, _currentCyclesPerFrame + increase);
+                Console.WriteLine($"Accuracy mode: FPS {workingFps:F1} -> Cycles increased by {increase} to {_currentCyclesPerFrame}");
+            }
+        }
+        
+        // Cap cycles based on sustained performance
+        double accuracyPercent = (_currentCyclesPerFrame / (double)FullAccuracyCycles) * 100;
+        Console.WriteLine($"Adaptive performance: {accuracyPercent:F1}% accuracy, {workingFps:F1} FPS");
     }
 
     // Audio control
@@ -441,7 +543,76 @@
         });
     }
 
-    // Debug functionality (preserved from original)
+    // Debug functionality with Tetris loading for testing
+    private async Task LoadTetrisForTesting()
+    {
+        try
+        {
+            // For testing purposes, create a simulation of Tetris performance
+            // since direct file access isn't available in WebAssembly
+            Console.WriteLine("Loading performance test simulation...");
+            
+            // Create a minimal test ROM that will exercise the emulator
+            byte[] testRom = CreatePerformanceTestRom();
+            await OnRomLoaded((testRom, "PerformanceTest.gb"));
+            Console.WriteLine("Performance test ROM loaded - simulating complex game behavior");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load performance test: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Creates a minimal ROM that exercises the emulator for performance testing
+    /// </summary>
+    private byte[] CreatePerformanceTestRom()
+    {
+        // Create a minimal 32KB ROM with header and some basic instructions
+        byte[] rom = new byte[32768];
+        
+        // ROM header (at 0x100-0x14F)
+        rom[0x0143] = 0x00; // CGB flag - DMG only
+        rom[0x0147] = 0x00; // MBC type - ROM only
+        rom[0x0148] = 0x00; // ROM size - 32KB
+        rom[0x0149] = 0x00; // RAM size - none
+        
+        // Calculate header checksum
+        int checksum = 0;
+        for (int i = 0x0134; i < 0x014D; i++)
+        {
+            checksum = checksum - rom[i] - 1;
+        }
+        rom[0x014D] = (byte)(checksum & 0xFF);
+        
+        // Entry point (0x0100) - jump to main code
+        rom[0x0100] = 0xC3; // JP instruction
+        rom[0x0101] = 0x50; // Low byte of address 0x0150
+        rom[0x0102] = 0x01; // High byte of address 0x0150
+        
+        // Main code loop (0x0150+) - create a busy loop that exercises CPU
+        int addr = 0x0150;
+        rom[addr++] = 0x21; // LD HL, 0x9800 (VRAM)
+        rom[addr++] = 0x00;
+        rom[addr++] = 0x98;
+        
+        rom[addr++] = 0x06; // LD B, 0xFF
+        rom[addr++] = 0xFF;
+        
+        // Loop start
+        rom[addr++] = 0x36; // LD (HL), value
+        rom[addr++] = 0xAA;
+        rom[addr++] = 0x23; // INC HL
+        rom[addr++] = 0x05; // DEC B
+        rom[addr++] = 0x20; // JR NZ, -4
+        rom[addr++] = 0xFC;
+        
+        rom[addr++] = 0x18; // JR -10 (infinite loop)
+        rom[addr++] = 0xF6;
+        
+        return rom;
+    }
+    
     private async Task CreateTestPattern()
     {
         _isInTestMode = true; // Pause emulation
