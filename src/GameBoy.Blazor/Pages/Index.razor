@@ -12,228 +12,123 @@
 @implements IDisposable
 
 <!-- Header -->
-<div class="emulator-header">
-    <div class="header-left">
-        <h1><i class="gameboy-icon">🎮</i> GameBoy Emulator</h1>
+<div class="game-header">
+    <h1>BlazorBoy</h1>
+</div>
+
+<!-- Main Game Layout -->
+<div class="game-layout-centered">
+    <!-- Compact Game Cartridge Section -->
+    <div class="game-cartridge-compact">
+        <h6>Game Cartridge</h6>
+        <RomLoader OnRomLoaded="OnRomLoaded" @ref="_romLoader" />
     </div>
-    <div class="header-right">
-        <button class="btn-header" @onclick="ToggleSettings">
-            <i class="settings-icon">⚙️</i>
-        </button>
-        <div class="rom-loader-header">
-            <RomLoader OnRomLoaded="OnRomLoaded" @ref="_romLoader" />
+
+
+
+    <!-- Game Screen - Primary Focus -->
+        <div class="game-screen-container">
+            <div class="game-canvas-wrapper" tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
+                <canvas id="screen" width="160" height="144" 
+                        class="game-canvas"
+                        style="width: 320px; height: 288px;"></canvas>
+            </div>
+            <div class="canvas-instruction">
+                <small>Click on screen and use keyboard or touch controls</small>
+            </div>
+        </div>
+
+    <!-- Save States -->
+    <div class="save-states-compact">
+        <h6>Save States</h6>
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <button class="btn-modern btn-success" @onclick="SaveState" disabled="@(!_hasRom)">
+                    💾 Quick Save
+                </button>
+                <button class="btn-modern btn-primary" @onclick="LoadState" disabled="@(!_hasRom)">
+                    📁 Quick Load
+                </button>
+                @if (_saveStateMessage != null)
+                {
+                    <small style="color: @(_saveStateSuccess ? "var(--success)" : "var(--danger)")">@_saveStateMessage</small>
+                }
         </div>
     </div>
 </div>
 
-<!-- Main Two-Panel Layout -->
-<div class="emulator-main">
-    <!-- Left Panel - Game Screen -->
-    <div class="game-panel">
-        <div class="game-screen-frame">
-            <!-- Status Dots -->
-            <div class="status-dots">
-                <div class="status-dot red"></div>
-                <div class="status-dot yellow"></div>
-                <div class="status-dot green"></div>
-            </div>
-            
-            <!-- Screen Label -->
-            <div class="screen-label">NINTENDO GAME BOY</div>
-            
-            <!-- Game Screen -->
-            <div class="game-screen-container">
-                <div class="game-canvas-wrapper" tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
-                    <canvas id="screen" width="160" height="144" 
-                            class="game-canvas"></canvas>
-                    
-                    <!-- No ROM Loaded Overlay -->
-                    @if (!_hasRom)
-                    {
-                        <div class="no-rom-overlay">
-                            <div class="gameboy-icon-large">🎮</div>
-                            <div class="no-rom-text">NO ROM LOADED</div>
-                            <div class="no-rom-subtext">Select cartridge to begin</div>
-                        </div>
-                    }
-                </div>
-            </div>
-            
-            <!-- Control Buttons -->
-            <div class="screen-controls">
-                <button class="btn-control btn-save" @onclick="SaveState" disabled="@(!_hasRom)">
-                    💾 SAVE STATE
-                </button>
-                <button class="btn-control btn-load" @onclick="LoadState" disabled="@(!_hasRom)">
-                    📁 LOAD STATE
-                </button>
-                <button class="btn-control btn-pause" @onclick="ToggleRunPause" disabled="@(!_hasRom)">
-                    @(_isRunning ? "⏸️ PAUSE" : "▶️ PLAY")
-                </button>
-            </div>
-            
-            <!-- Status Bar -->
-            <div class="status-bar">
-                <div class="status-item">
-                    <span class="status-label">STATUS:</span>
-                    <span class="status-value">@(_hasRom ? (_isRunning ? "Running" : "Paused") : "Ready")</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">FPS:</span>
-                    <span class="status-value">@(_lastFps.ToString("F0"))</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">BATTERY:</span>
-                    <div class="battery-indicator">
-                        <div class="battery-level" style="width: @(Emulator.HasBatteryRam ? "100%" : "0%")"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- Settings Overlay Toggle Button -->
+<button class="overlay-toggle-btn" @onclick="ToggleSettingsOverlay" aria-label="Toggle Settings">
+    ⚙️ Settings
+</button>
+
+<!-- Settings Overlay -->
+<div class="settings-overlay @(_showSettingsOverlay ? "show" : "")">
+    <div class="overlay-header">
+        <h6>Settings & Controls</h6>
+        <button class="overlay-close" @onclick="ToggleSettingsOverlay" aria-label="Close Settings">×</button>
     </div>
-
-    <!-- Right Panel - Controls -->
-    <div class="controls-panel">
-        <!-- Game Controls -->
-        <div class="control-section">
-            <h3>GAME CONTROLS</h3>
-            <div class="game-controls">
-                <div class="dpad-container">
-                    <div class="dpad">
-                        <button class="dpad-btn dpad-up" @onmousedown="@(() => OnDirectionalInput("Up", true))" @onmouseup="@(() => OnDirectionalInput("Up", false))">⬆</button>
-                        <button class="dpad-btn dpad-left" @onmousedown="@(() => OnDirectionalInput("Left", true))" @onmouseup="@(() => OnDirectionalInput("Left", false))">⬅</button>
-                        <button class="dpad-btn dpad-center"></button>
-                        <button class="dpad-btn dpad-right" @onmousedown="@(() => OnDirectionalInput("Right", true))" @onmouseup="@(() => OnDirectionalInput("Right", false))">➡</button>
-                        <button class="dpad-btn dpad-down" @onmousedown="@(() => OnDirectionalInput("Down", true))" @onmouseup="@(() => OnDirectionalInput("Down", false))">⬇</button>
-                    </div>
-                </div>
-                <div class="action-buttons">
-                    <button class="action-btn btn-b" @onmousedown="@(() => OnActionInput("B", true))" @onmouseup="@(() => OnActionInput("B", false))">B</button>
-                    <button class="action-btn btn-a" @onmousedown="@(() => OnActionInput("A", true))" @onmouseup="@(() => OnActionInput("A", false))">A</button>
-                </div>
-                <div class="system-buttons">
-                    <button class="system-btn" @onmousedown="@(() => OnActionInput("Select", true))" @onmouseup="@(() => OnActionInput("Select", false))">SELECT</button>
-                    <button class="system-btn" @onmousedown="@(() => OnActionInput("Start", true))" @onmouseup="@(() => OnActionInput("Start", false))">START</button>
-                </div>
-            </div>
+    
+    <div class="overlay-content">
+        <!-- Emulator Controls -->
+        <div class="overlay-section">
+            <h6>Emulator Controls</h6>
+            <EmulatorControls HasRom="_hasRom" 
+                            IsRunning="_isRunning"
+                            OnToggleRunPause="ToggleRunPause"
+                            OnReset="ResetEmulator"
+                            OnSpeedChangeCallback="OnSpeedChanged" 
+                            @ref="_emulatorControls" />
         </div>
 
-        <!-- Quick Settings -->
-        <div class="control-section">
-            <h3>QUICK SETTINGS</h3>
-            <div class="settings-grid">
-                <div class="setting-row">
-                    <label>Sound</label>
-                    <div class="toggle-switch">
-                        <input type="checkbox" @bind="_audioEnabled" @oninput="OnAudioToggle" />
-                        <span class="toggle-slider"></span>
-                    </div>
-                </div>
-                <div class="setting-row">
-                    <label>Fullscreen</label>
-                    <div class="toggle-switch">
-                        <input type="checkbox" @bind="_fullscreenEnabled" @oninput="OnFullscreenToggle" />
-                        <span class="toggle-slider"></span>
-                    </div>
-                </div>
-                <div class="setting-row">
-                    <label>Screen Size</label>
-                    <select class="setting-select" @bind="_screenSize" @oninput="OnScreenSizeChange">
-                        <option value="1x">Pixel Perfect</option>
-                        <option value="2x" selected>Standard</option>
-                        <option value="3x">Large</option>
-                        <option value="fit">Fit Screen</option>
-                    </select>
-                </div>
-                <div class="setting-row">
-                    <label>Filter Presets</label>
-                    <select class="setting-select" @bind="_filterPreset" @oninput="OnFilterChange">
-                        <option value="none" selected>None</option>
-                        <option value="scanlines">Scanlines</option>
-                        <option value="crt">CRT</option>
-                        <option value="smooth">Smooth</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Color Palette -->
-        <div class="control-section">
-            <h3>COLOR PALETTE</h3>
-            <div class="color-palette">
-                <div class="palette-option @(_selectedPalette == "classic" ? "selected" : "")" @onclick="@(() => SelectPalette("classic"))">
-                    <div class="color-sample classic-palette"></div>
-                </div>
-                <div class="palette-option @(_selectedPalette == "orange" ? "selected" : "")" @onclick="@(() => SelectPalette("orange"))">
-                    <div class="color-sample orange-palette"></div>
-                </div>
-                <div class="palette-option @(_selectedPalette == "blue" ? "selected" : "")" @onclick="@(() => SelectPalette("blue"))">
-                    <div class="color-sample blue-palette"></div>
-                </div>
-                <div class="palette-option @(_selectedPalette == "teal" ? "selected" : "")" @onclick="@(() => SelectPalette("teal"))">
-                    <div class="color-sample teal-palette"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Save States -->
-        <div class="control-section">
-            <h3>SAVE STATES</h3>
-            <div class="save-slots">
-                <div class="save-slot @(_saveSlot1Used ? "used" : "empty")" @onclick="@(() => SelectSaveSlot(1))">
-                    <div class="slot-icon">💾</div>
-                    <div class="slot-info">
-                        <div class="slot-title">Slot 1</div>
-                        <div class="slot-subtitle">@(_saveSlot1Used ? "Saved 2 minutes ago" : "Empty")</div>
-                    </div>
-                </div>
-                <div class="save-slot empty" @onclick="@(() => SelectSaveSlot(2))">
-                    <div class="slot-icon">💾</div>
-                    <div class="slot-info">
-                        <div class="slot-title">Slot 2</div>
-                        <div class="slot-subtitle">Empty</div>
-                    </div>
-                </div>
-                <div class="save-slot empty" @onclick="@(() => SelectSaveSlot(3))">
-                    <div class="slot-icon">💾</div>
-                    <div class="slot-info">
-                        <div class="slot-title">Slot 3</div>
-                        <div class="slot-subtitle">Empty</div>
-                    </div>
-                </div>
-            </div>
+        <!-- Audio Controls -->
+        <div class="overlay-section">
+            <h6>Audio</h6>
+            <AudioToggle OnAudioStateChanged="OnAudioStateChanged"
+                       OnVolumeChangeCallback="OnVolumeChanged" 
+                       @ref="_audioToggle" />
         </div>
 
         <!-- Performance -->
-        <div class="control-section">
-            <h3>PERFORMANCE</h3>
-            <div class="performance-info">
-                <div class="perf-item">
-                    <label>CPU Usage</label>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: @(_lastFps > 50 ? "75%" : "45%")"></div>
-                    </div>
-                    <span class="perf-value">@(_lastFps > 50 ? "75%" : "45%")</span>
-                </div>
-                <div class="perf-item">
-                    <label>Memory</label>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 60%"></div>
-                    </div>
-                    <span class="perf-value">60%</span>
-                </div>
-                <div class="perf-item">
-                    <label>Frame Rate</label>
-                    <div class="fps-display">@(_lastFps.ToString("F0")) FPS</div>
-                </div>
+        <div class="overlay-section">
+            <h6>Performance</h6>
+            <FpsCounter CurrentFps="_lastFps" @ref="_fpsCounter" />
+        </div>
+
+        <!-- Input Remapping -->
+        <div class="overlay-section">
+            <InputRemapping OnMappingsChanged="OnInputMappingsChanged" @ref="_inputRemapping" />
+        </div>
+
+        <!-- Debug Tools -->
+        <div class="overlay-section">
+            <h6>Debug Tools</h6>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                <button class="btn-modern" @onclick="CreateTestPattern">Test VRAM</button>
+                <button class="btn-modern" @onclick="CreateDirectTestPattern">Test Direct</button>
+                <button class="btn-modern btn-warning" @onclick="LoadTetrisForTesting">🎮 Load Test ROM</button>
+                <button class="btn-modern btn-info" @onclick="ShowDebugInfo">Debug Info</button>
+                <button class="btn-modern btn-primary" @onclick="NavigateToDebugPage">🔧 Debug Page</button>
             </div>
+            
+            @if (_showDebugInfo)
+            {
+                <div class="debug-panel">@_debugInfo</div>
+            }
         </div>
     </div>
 </div>
+
+<!-- Touch Overlay for Mobile -->
+<TouchOverlay OnButtonStateChanged="OnTouchInput" @ref="_touchOverlay" />
 
 @code {
     // Component references
     private RomLoader? _romLoader;
+    private EmulatorControls? _emulatorControls;
+    private AudioToggle? _audioToggle;
+    private FpsCounter? _fpsCounter;
+    private InputRemapping? _inputRemapping;
+    private TouchOverlay? _touchOverlay;
 
     // Core emulator state
     private DotNetObjectReference<Index>? _dotNetRef;
@@ -263,18 +158,20 @@
     private bool _showDebugInfo = false;
     private string _debugInfo = "";
 
-    // UI state
+    // Settings overlay
     private bool _showSettingsOverlay = false;
-    private bool _audioEnabled = true;
-    private bool _fullscreenEnabled = false;
-    private string _screenSize = "2x";
-    private string _filterPreset = "none";
-    private string _selectedPalette = "classic";
-    
+
     // Save state
     private string? _currentRomKey;
     private string? _saveStateMessage;
     private bool _saveStateSuccess;
+    
+    // UI state for new design
+    private bool _audioEnabled = true;
+    private bool _fullscreenEnabled = false;
+    private string _screenSize = "Standard";
+    private string _filterPreset = "None";
+    private string _selectedPalette = "classic";
     private bool _saveSlot1Used = false;
     private bool _saveSlot2Used = false;
     private bool _saveSlot3Used = false;
@@ -352,65 +249,6 @@
         {
             // Audio might not be initialized yet - this is normal
         }
-    }
-
-    // UI Control Methods
-    private void ToggleSettings()
-    {
-        _showSettingsOverlay = !_showSettingsOverlay;
-    }
-
-    private void OnDirectionalInput(string direction, bool pressed)
-    {
-        switch (direction)
-        {
-            case "Up": Emulator.Joypad.Up = pressed; break;
-            case "Down": Emulator.Joypad.Down = pressed; break;
-            case "Left": Emulator.Joypad.Left = pressed; break;
-            case "Right": Emulator.Joypad.Right = pressed; break;
-        }
-    }
-
-    private void OnActionInput(string action, bool pressed)
-    {
-        switch (action)
-        {
-            case "A": Emulator.Joypad.A = pressed; break;
-            case "B": Emulator.Joypad.B = pressed; break;
-            case "Start": Emulator.Joypad.Start = pressed; break;
-            case "Select": Emulator.Joypad.Select = pressed; break;
-        }
-    }
-
-    private void OnAudioToggle()
-    {
-        // Audio toggle logic
-    }
-
-    private void OnFullscreenToggle()
-    {
-        // Fullscreen toggle logic
-    }
-
-    private void OnScreenSizeChange()
-    {
-        // Screen size change logic
-    }
-
-    private void OnFilterChange()
-    {
-        // Filter change logic
-    }
-
-    private void SelectPalette(string palette)
-    {
-        _selectedPalette = palette;
-        // Palette change logic
-    }
-
-    private void SelectSaveSlot(int slot)
-    {
-        // Save slot selection logic
     }
 
     // ROM loading with adaptive performance initialization
@@ -573,6 +411,28 @@
                 break;
             }
         }
+    }
+
+    private void OnTouchInput((string button, bool pressed) input)
+    {
+        // Handle touch input
+        switch (input.button)
+        {
+            case "Up": Emulator.Joypad.Up = input.pressed; break;
+            case "Down": Emulator.Joypad.Down = input.pressed; break;
+            case "Left": Emulator.Joypad.Left = input.pressed; break;
+            case "Right": Emulator.Joypad.Right = input.pressed; break;
+            case "A": Emulator.Joypad.A = input.pressed; break;
+            case "B": Emulator.Joypad.B = input.pressed; break;
+            case "Start": Emulator.Joypad.Start = input.pressed; break;
+            case "Select": Emulator.Joypad.Select = input.pressed; break;
+        }
+    }
+
+    private async Task OnInputMappingsChanged(Dictionary<string, string> mappings)
+    {
+        _inputMappings = mappings;
+        await SettingsService.SetInputMappingsAsync(mappings);
     }
 
     private void OnCanvasClick()
@@ -790,7 +650,10 @@
         Navigation.NavigateTo("/debug");
     }
 
-
+    private void ToggleSettingsOverlay()
+    {
+        _showSettingsOverlay = !_showSettingsOverlay;
+    }
 
     public void Dispose()
     {

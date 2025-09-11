@@ -1,37 +1,49 @@
-/* ===== CSS Variables for Dark Theme ===== */
+/* Dark theme by default */
 :root {
-    /* Dark theme colors */
-    --bg-primary: #1a1d2e;
-    --bg-secondary: #2c3044;
-    --bg-tertiary: #3a3f58;
-    --bg-panel: #252a3f;
-    --text-primary: #ffffff;
-    --text-secondary: #b3b8d4;
-    --text-muted: #8a92b2;
-    --border-color: #3a3f58;
+    /* Dark theme colors as default */
+    --bg-primary: #2c3e50;
+    --bg-secondary: #34495e;
+    --bg-tertiary: #455a75;
+    --text-primary: #ecf0f1;
+    --text-secondary: #bdc3c7;
+    --text-muted: #95a5a6;
+    --border-color: #34495e;
     --accent-primary: #00d4aa;
     --accent-secondary: #7c3aed;
     --gameboy-green: #9bbc0f;
     --gameboy-dark-green: #8bac0f;
-    --gameboy-border: #556b2f;
-    --danger: #dc3545;
-    --success: #28a745;
-    --warning: #ffc107;
-    --info: #17a2b8;
-    --orange-palette: #ff6b35;
-    --blue-palette: #4a90e2;
-    --teal-palette: #1abc9c;
+    --danger: #e74c3c;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --info: #3498db;
     
     /* Shadows */
-    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-    --shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
     
     /* Border radius */
-    --border-radius: 8px;
-    --border-radius-lg: 12px;
-    --border-radius-sm: 4px;
+    --border-radius: 0.5rem;
+    --border-radius-lg: 1rem;
+    --border-radius-sm: 0.25rem;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #404040;
+    --text-primary: #ffffff;
+    --text-secondary: #b3b3b3;
+    --text-muted: #888888;
+    --border-color: #404040;
+    --accent-primary: #00d4aa;
+    --accent-secondary: #8b5cf6;
+    --gameboy-green: #9bbc0f;
+    --gameboy-dark-green: #8bac0f;
+    --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
+    --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.5);
 }
 
 /* ===== Base Styles ===== */
@@ -44,705 +56,848 @@ html, body {
     padding: 0;
     height: 100%;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, var(--bg-primary) 0%, #1e2238 100%);
+    background-color: var(--bg-primary);
     color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
     line-height: 1.6;
-    overflow-x: hidden;
 }
 
 /* ===== Typography ===== */
 h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
     line-height: 1.3;
-    margin: 0;
+    margin-bottom: 1rem;
     color: var(--text-primary);
 }
 
 h1 {
-    font-size: 1.8rem;
+    font-size: 2.5rem;
     font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 2rem;
 }
 
-h3 {
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
+h1:focus {
+    outline: none;
 }
 
-/* ===== Header ===== */
-.emulator-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 2rem;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
+/* ===== Layout ===== */
+.game-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    padding: 2rem 1rem;
 }
 
-.header-left {
-    display: flex;
-    align-items: center;
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.gameboy-icon {
-    font-size: 1.5rem;
-}
-
-.settings-icon {
-    font-size: 1.2rem;
-}
-
-.btn-header {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    color: var(--text-primary);
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.btn-header:hover {
-    background: var(--bg-panel);
-    transform: translateY(-1px);
-}
-
-.rom-loader-header {
-    /* Style the ROM loader in header */
-}
-
-.rom-loader-header .btn-modern {
-    background: var(--accent-primary);
-    border: none;
-    border-radius: var(--border-radius);
-    color: white;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.rom-loader-header .btn-modern:hover {
-    background: var(--accent-secondary);
-    transform: translateY(-1px);
-}
-
-/* ===== Main Layout ===== */
-.emulator-main {
-    display: flex;
-    height: calc(100vh - 80px);
-    gap: 2rem;
-    padding: 2rem;
-}
-
-/* ===== Left Panel - Game Screen ===== */
-.game-panel {
-    flex: 1;
-    max-width: 600px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.game-screen-frame {
-    background: var(--bg-secondary);
-    border-radius: var(--border-radius-lg);
-    padding: 2rem;
-    box-shadow: var(--shadow-lg);
-    border: 1px solid var(--border-color);
-    width: 100%;
-    max-width: 500px;
-}
-
-.status-dots {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.status-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-}
-
-.status-dot.red { background: #ff5f57; }
-.status-dot.yellow { background: #ffbd2e; }
-.status-dot.green { background: #28ca42; }
-
-.screen-label {
+.game-header {
     text-align: center;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 1rem;
-    letter-spacing: 1px;
+    margin-bottom: 3rem;
 }
 
-.game-screen-container {
-    position: relative;
-    background: var(--gameboy-green);
-    border: 4px solid var(--gameboy-border);
-    border-radius: var(--border-radius);
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-    box-shadow: var(--shadow-inset);
-}
-
-.game-canvas-wrapper {
-    position: relative;
-    width: 320px;
-    height: 288px;
+.game-layout {
+    max-width: 1400px;
     margin: 0 auto;
-    background: #0f380f;
-    border-radius: 4px;
-    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 3rem;
+    align-items: start;
 }
 
-.game-canvas {
-    width: 100%;
-    height: 100%;
-    image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
-    image-rendering: crisp-edges;
-}
-
-.no-rom-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: #0f380f;
-    color: var(--gameboy-green);
-}
-
-.gameboy-icon-large {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-    opacity: 0.7;
-}
-
-.no-rom-text {
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.no-rom-subtext {
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
-
-.screen-controls {
-    display: flex;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-    justify-content: center;
-}
-
-.btn-control {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    color: var(--text-primary);
-    padding: 0.75rem 1rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.85rem;
-    font-weight: 500;
-    min-width: 120px;
-}
-
-.btn-control:hover:not(:disabled) {
-    background: var(--bg-panel);
-    transform: translateY(-1px);
-}
-
-.btn-control:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.btn-save { border-left: 3px solid var(--success); }
-.btn-load { border-left: 3px solid var(--info); }
-.btn-pause { border-left: 3px solid var(--warning); }
-
-.status-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    background: var(--bg-tertiary);
-    border-radius: var(--border-radius);
-    font-size: 0.8rem;
-}
-
-.status-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.status-label {
-    color: var(--text-muted);
-    font-weight: 500;
-}
-
-.status-value {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-.battery-indicator {
-    width: 30px;
-    height: 12px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 2px;
-    position: relative;
-    overflow: hidden;
-}
-
-.battery-level {
-    height: 100%;
-    background: var(--success);
-    transition: width 0.3s ease;
-}
-
-/* ===== Right Panel - Controls ===== */
-.controls-panel {
-    width: 320px;
+/* New centered layout for focused Game Boy experience */
+.game-layout-centered {
+    max-width: 900px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    overflow-y: auto;
-    padding-right: 0.5rem;
+    align-items: center;
 }
 
-.control-section {
+/* Desktop-optimized layout for larger screens */
+@media (min-width: 1200px) {
+    .game-layout-centered {
+        max-width: 1200px;
+        gap: 2rem;
+    }
+    
+    .game-screen-container {
+        padding: 3rem;
+        max-width: none;
+    }
+    
+    .game-canvas {
+        width: 480px !important;
+        height: 432px !important;
+    }
+}
+
+/* Compact game cartridge styling */
+.game-cartridge-compact {
     background: var(--bg-secondary);
-    border-radius: var(--border-radius-lg);
-    padding: 1.5rem;
-    box-shadow: var(--shadow);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
     border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
 }
 
-/* ===== Game Controls ===== */
-.game-controls {
+/* Compact save states styling */
+.save-states-compact {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Desktop optimizations for compact sections */
+@media (min-width: 1200px) {
+    .game-cartridge-compact,
+    .save-states-compact {
+        max-width: 600px;
+        padding: 1.5rem;
+    }
+}
+
+.game-cartridge-compact h6 {
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.save-states-compact h6 {
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+/* Settings Overlay Toggle Button */
+.overlay-toggle-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-lg);
+    padding: 1rem 1.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow-lg);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.overlay-toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    background: var(--accent-secondary);
+}
+
+/* Settings Overlay */
+.settings-overlay {
+    position: fixed;
+    top: 0;
+    right: -450px;
+    width: 420px;
+    height: 100vh;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    z-index: 999;
+    transition: right 0.3s ease;
+    overflow-y: auto;
+}
+
+/* Desktop optimizations for settings overlay */
+@media (min-width: 1400px) {
+    .settings-overlay {
+        right: -500px;
+        width: 480px;
+    }
+    
+    .overlay-content {
+        padding: 2rem;
+    }
+}
+
+.settings-overlay.show {
+    right: 0;
+}
+
+.overlay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-primary);
+}
+
+.overlay-header h6 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.overlay-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.2s ease;
+}
+
+.overlay-close:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.overlay-content {
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    align-items: center;
+    gap: 2rem;
 }
 
-.dpad-container {
-    margin-bottom: 1rem;
-}
-
-.dpad {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr;
-    gap: 2px;
-    width: 120px;
-    height: 120px;
-}
-
-.dpad-btn {
-    background: var(--bg-tertiary);
+.overlay-section {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
     border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.1s ease;
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
-.dpad-btn:active {
-    background: var(--accent-primary);
-    transform: scale(0.95);
-}
-
-.dpad-up { grid-column: 2; grid-row: 1; border-radius: 8px 8px 0 0; }
-.dpad-left { grid-column: 1; grid-row: 2; border-radius: 8px 0 0 8px; }
-.dpad-center { grid-column: 2; grid-row: 2; background: var(--bg-panel); cursor: default; }
-.dpad-right { grid-column: 3; grid-row: 2; border-radius: 0 8px 8px 0; }
-.dpad-down { grid-column: 2; grid-row: 3; border-radius: 0 0 8px 8px; }
-
-.action-buttons {
-    display: flex;
-    gap: 1rem;
+.overlay-section h6 {
     margin-bottom: 1rem;
-}
-
-.action-btn {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: var(--bg-tertiary);
-    border: 2px solid var(--border-color);
     color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.1s ease;
     font-weight: 600;
     font-size: 1rem;
 }
 
-.action-btn:active {
-    background: var(--accent-primary);
-    transform: scale(0.95);
-}
-
-.btn-a { border-color: var(--danger); }
-.btn-b { border-color: var(--warning); }
-
-.system-buttons {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.system-btn {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    color: var(--text-secondary);
-    padding: 0.5rem 0.75rem;
-    cursor: pointer;
-    transition: all 0.1s ease;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.system-btn:active {
-    background: var(--accent-primary);
-    color: var(--text-primary);
-}
-
-/* ===== Quick Settings ===== */
-.settings-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.setting-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.setting-row label {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.toggle-switch {
-    position: relative;
-    width: 44px;
-    height: 24px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    transition: 0.2s;
-}
-
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 2px;
-    bottom: 2px;
-    background: var(--text-muted);
-    border-radius: 50%;
-    transition: 0.2s;
-}
-
-input:checked + .toggle-slider {
-    background: var(--accent-primary);
-    border-color: var(--accent-primary);
-}
-
-input:checked + .toggle-slider:before {
-    transform: translateX(20px);
-    background: white;
-}
-
-.setting-select {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    color: var(--text-primary);
-    padding: 0.5rem;
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-
-.setting-select:focus {
-    outline: none;
-    border-color: var(--accent-primary);
-}
-
-/* ===== Color Palette ===== */
-.color-palette {
-    display: flex;
-    gap: 0.75rem;
-    justify-content: center;
-}
-
-.palette-option {
-    width: 50px;
-    height: 35px;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 2px solid transparent;
-    overflow: hidden;
-}
-
-.palette-option.selected {
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 2px var(--accent-primary);
-}
-
-.color-sample {
-    width: 100%;
-    height: 100%;
-    border-radius: 4px;
-}
-
-.classic-palette { background: linear-gradient(45deg, #9bbc0f, #8bac0f, #306230, #0f380f); }
-.orange-palette { background: linear-gradient(45deg, #ff6b35, #f7931e, #c5621a, #8b4513); }
-.blue-palette { background: linear-gradient(45deg, #4a90e2, #357abd, #1f5582, #0d3b66); }
-.teal-palette { background: linear-gradient(45deg, #1abc9c, #16a085, #138d75, #0e6b5d); }
-
-/* ===== Save States ===== */
-.save-slots {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.save-slot {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.75rem;
-    background: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.save-slot:hover {
-    background: var(--bg-tertiary);
-    transform: translateY(-1px);
-}
-
-.save-slot.used {
-    border-left: 3px solid var(--success);
-}
-
-.save-slot.empty {
-    opacity: 0.7;
-}
-
-.slot-icon {
-    font-size: 1.5rem;
-    opacity: 0.8;
-}
-
-.slot-info {
-    flex: 1;
-}
-
-.slot-title {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-}
-
-.slot-subtitle {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin-top: 0.25rem;
-}
-
-/* ===== Performance ===== */
-.performance-info {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.perf-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.perf-item label {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    min-width: 70px;
-}
-
-.progress-bar {
-    flex: 1;
-    height: 8px;
-    background: var(--bg-panel);
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent-primary), var(--success));
-    transition: width 0.3s ease;
-}
-
-.perf-value {
-    font-size: 0.85rem;
-    color: var(--text-primary);
-    font-weight: 600;
-    min-width: 40px;
-    text-align: right;
-}
-
-.fps-display {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    padding: 0.5rem 1rem;
-    font-weight: 600;
-    color: var(--success);
-    font-family: 'Courier New', monospace;
-    text-align: center;
-    min-width: 80px;
-}
-
-/* ===== Responsive Design ===== */
-@media (max-width: 1200px) {
-    .emulator-main {
-        flex-direction: column;
-        height: auto;
-        gap: 1.5rem;
+@media (max-width: 1024px) {
+    .game-layout {
+        grid-template-columns: 1fr;
+        gap: 2rem;
     }
     
-    .controls-panel {
+    .game-layout-centered {
+        padding: 1rem;
+        gap: 1rem;
+    }
+    
+    .settings-overlay {
         width: 100%;
-        max-width: 500px;
-        margin: 0 auto;
+        right: -100%;
     }
     
-    .game-panel {
-        max-width: none;
+    .overlay-toggle-btn {
+        bottom: 1rem;
+        right: 1rem;
+        padding: 0.75rem 1.25rem;
+        font-size: 0.9rem;
     }
+}
+
+/* ===== Cards ===== */
+.modern-card {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.modern-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.modern-card h6 {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+/* ===== Game Screen ===== */
+.game-screen-container {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+}
+
+.game-canvas-wrapper {
+    position: relative;
+    display: inline-block;
+    background: #000;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+}
+
+.game-canvas {
+    display: block;
+    image-rendering: pixelated;
+    border-radius: var(--border-radius-sm);
+    background: var(--gameboy-green);
+    border: 2px solid #333;
+}
+
+.canvas-instruction {
+    margin-top: 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* ===== Controls Panel ===== */
+.controls-panel {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    align-items: center;
 }
 
 @media (max-width: 768px) {
-    .emulator-header {
-        padding: 1rem;
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .emulator-main {
-        padding: 1rem;
-        gap: 1rem;
-    }
-    
-    .game-screen-frame {
-        padding: 1rem;
-    }
-    
-    .game-canvas-wrapper {
-        width: 280px;
-        height: 252px;
-    }
-    
-    .controls-panel {
-        gap: 1rem;
-    }
-    
-    .control-section {
-        padding: 1rem;
+    .controls-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
     }
 }
 
-/* ===== Utility Classes ===== */
-.text-center { text-align: center; }
-.text-muted { color: var(--text-muted); }
-.mb-0 { margin-bottom: 0; }
-.mt-1 { margin-top: 0.5rem; }
+/* ===== Buttons ===== */
+.btn-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
 
-/* ===== Focus Styles ===== */
-button:focus,
-select:focus,
-input:focus {
+.btn-modern:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.btn-modern:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: white;
+    border: none;
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+    border: none;
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+    border: none;
+}
+
+.btn-info {
+    background: var(--info);
+    color: white;
+    border: none;
+}
+
+/* ===== Form Controls ===== */
+.form-control-modern {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    padding: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.form-control-modern:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.1);
+}
+
+/* ===== Theme Toggle ===== */
+.theme-toggle {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-lg);
+}
+
+/* ===== Sidebar Panel ===== */
+.sidebar-panel {
+    width: 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .sidebar-panel {
+        width: 100%;
+    }
+}
+
+/* ===== FPS Counter ===== */
+.fps-counter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+}
+
+/* ===== ROM Upload Area ===== */
+.rom-upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    background: var(--bg-tertiary);
+}
+
+.rom-upload-area:hover,
+.rom-upload-area.dragover {
+    border-color: var(--accent-primary);
+    background: rgba(0, 212, 170, 0.1);
+}
+
+.rom-upload-area strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+/* ===== Input Mapping ===== */
+.input-mapping-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.input-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: var(--bg-primary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+/* ===== Audio Controls ===== */
+.audio-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.volume-slider {
+    flex: 1;
+    min-width: 100px;
+}
+
+/* ===== Accessibility ===== */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Focus indicators */
+*:focus-visible {
     outline: 2px solid var(--accent-primary);
     outline-offset: 2px;
 }
 
-/* ===== Scrollbar Styles ===== */
-.controls-panel::-webkit-scrollbar {
-    width: 6px;
+/* ===== Debug Panel ===== */
+.debug-panel {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-top: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
 }
 
-.controls-panel::-webkit-scrollbar-track {
-    background: var(--bg-panel);
-    border-radius: 3px;
+/* ===== Legacy Bootstrap Overrides ===== */
+.content {
+    padding: 0;
 }
 
-.controls-panel::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 3px;
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid var(--success);
 }
 
-.controls-panel::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+.invalid {
+    outline: 1px solid var(--danger);
+}
+
+.validation-message {
+    color: var(--danger);
+}
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+.blazor-error-boundary {
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
+    padding: 1rem 1rem 1rem 3.7rem;
+    color: white;
+}
+
+    .blazor-error-boundary::after {
+        content: "An error has occurred."
+    }
+
+.loading-progress {
+    position: relative;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    margin: 20vh auto 1rem auto;
+}
+
+    .loading-progress circle {
+        fill: none;
+        stroke: #e0e0e0;
+        stroke-width: 0.6rem;
+        transform-origin: 50% 50%;
+        transform: rotate(-90deg);
+    }
+
+        .loading-progress circle:last-child {
+            stroke: #1b6ec2;
+            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+            transition: stroke-dasharray 0.05s ease-in-out;
+        }
+
+.loading-progress-text {
+    position: absolute;
+    text-align: center;
+    font-weight: bold;
+    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+}
+
+    .loading-progress-text:after {
+        content: var(--blazor-load-percentage-text, "Loading");
+    }
+
+code {
+    color: #c02d76;
+}
+
+.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+    color: var(--bs-secondary-color);
+    text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+    text-align: start;
+}
+
+/* ===== ROM Loader Collapsed State ===== */
+.rom-loader-collapsed {
+    background: var(--bg-tertiary);
+    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+}
+
+.loaded-rom-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* ===== Small Button Style ===== */
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: var(--border-radius-sm);
+}
+
+/* ===== Debug Page Styles ===== */
+.container-fluid {
+    width: 100%;
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -0.75rem;
+}
+
+.mb-3 {
+    margin-bottom: 2rem;
+}
+
+.col {
+    flex: 1;
+    padding: 0 0.75rem;
+}
+
+.col-lg-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+    padding: 0 0.75rem;
+}
+
+.col-md-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+    padding: 0 0.75rem;
+}
+
+.col-12 {
+    flex: 0 0 100%;
+    max-width: 100%;
+    padding: 0 0.75rem;
+}
+
+.card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.card-header {
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: white;
+    border: none;
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+    border: none;
+}
+
+.btn-outline-success {
+    background: transparent;
+    color: var(--success);
+    border: 1px solid var(--success);
+}
+
+.btn-warning {
+    background: var(--warning);
+    color: black;
+    border: none;
+}
+
+.btn-outline-secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-info {
+    background: var(--info);
+    color: white;
+    border: none;
+}
+
+.btn-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.text-muted {
+    color: var(--text-muted);
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    margin-top: 1rem;
+}
+
+.alert-info {
+    background: rgba(13, 202, 240, 0.1);
+    border-color: var(--info);
+    color: var(--info);
+}
+
+.alert-dismissible {
+    padding-right: 3rem;
+    position: relative;
+}
+
+.btn-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.2s ease;
+}
+
+.btn-close:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.btn-close::before {
+    content: "×";
+}
+
+/* Mobile responsive adjustments for debug page */
+@media (max-width: 1024px) {
+    .container-fluid {
+        padding: 1rem;
+    }
+    
+    .col-lg-6,
+    .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .row {
+        margin: 0;
+    }
+    
+    .col {
+        padding: 0;
+    }
+    
+    .col-lg-6,
+    .col-md-6,
+    .col-12 {
+        padding: 0;
+        margin-bottom: 1rem;
+    }
 }
