@@ -925,6 +925,7 @@ code {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     min-height: 100vh;
     background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
     padding: 2rem 1rem;
@@ -1215,44 +1216,7 @@ code {
     transform: scale(0.95);
 }
 
-/* Compact ROM Loading Area */
-.gameboy-rom-area {
-    position: fixed;
-    top: 2rem;
-    left: 2rem;
-    background: var(--bg-secondary);
-    border-radius: var(--border-radius);
-    padding: 1rem;
-    box-shadow: var(--shadow);
-    z-index: 100;
-    max-width: 300px;
-}
-
-.gameboy-rom-area h6 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-}
-
-/* Save States Area */
-.gameboy-save-area {
-    position: fixed;
-    bottom: 2rem;
-    left: 2rem;
-    background: var(--bg-secondary);
-    border-radius: var(--border-radius);
-    padding: 1rem;
-    box-shadow: var(--shadow);
-    z-index: 100;
-    max-width: 300px;
-}
-
-.gameboy-save-area h6 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-}
-
+/* Save states buttons in settings overlay */
 .gameboy-save-buttons {
     display: flex;
     gap: 0.5rem;
@@ -1271,8 +1235,8 @@ code {
     }
     
     .gameboy-canvas {
-        width: 256px;
-        height: 230px;
+        width: 280px;
+        height: 252px;
     }
     
     .gameboy-controls {
@@ -1298,6 +1262,27 @@ code {
         width: 18px;
         height: 20px;
     }
+    
+    .gameboy-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 0.9rem;
+    }
+    
+    .gameboy-action-buttons {
+        gap: 0.75rem;
+    }
+    
+    .gameboy-start-select {
+        gap: 1rem;
+    }
+    
+    .gameboy-start-select-btn {
+        width: 50px;
+        height: 18px;
+        font-size: 0.6rem;
+    }
+}
     
     .gameboy-btn {
         width: 40px;

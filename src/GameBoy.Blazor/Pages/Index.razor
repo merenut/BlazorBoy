@@ -13,32 +13,9 @@
 
 <!-- Game Boy Container -->
 <div class="gameboy-container">
-    <!-- ROM Loading Area (Top Left) -->
-    <div class="gameboy-rom-area">
-        <h6>Game Cartridge</h6>
-        <RomLoader OnRomLoaded="OnRomLoaded" @ref="_romLoader" />
-    </div>
-
-    <!-- Save States Area (Bottom Left) -->
-    <div class="gameboy-save-area">
-        <h6>Save States</h6>
-        <div class="gameboy-save-buttons">
-            <button class="btn-modern btn-success" @onclick="SaveState" disabled="@(!_hasRom)">
-                💾 Save
-            </button>
-            <button class="btn-modern btn-primary" @onclick="LoadState" disabled="@(!_hasRom)">
-                📁 Load
-            </button>
-            @if (_saveStateMessage != null)
-            {
-                <small style="color: @(_saveStateSuccess ? "var(--success)" : "var(--danger)")">@_saveStateMessage</small>
-            }
-        </div>
-    </div>
-
     <!-- Game Boy Header with Settings -->
     <div class="gameboy-header">
-        <h1 class="gameboy-title">Game Boy</h1>
+        <h1 class="gameboy-title">GAME BOY</h1>
         <button class="gameboy-settings-icon" @onclick="ToggleSettingsOverlay" aria-label="Settings">
             ⚙️
         </button>
@@ -114,21 +91,21 @@
                         @onmouseup="@(() => OnControlInput("Select", false))"
                         @ontouchstart="@(() => OnControlInput("Select", true))"
                         @ontouchend="@(() => OnControlInput("Select", false))">
-                    Select
+                    SELECT
                 </button>
                 <button class="gameboy-start-select-btn"
                         @onmousedown="@(() => OnControlInput("Start", true))"
                         @onmouseup="@(() => OnControlInput("Start", false))"
                         @ontouchstart="@(() => OnControlInput("Start", true))"
                         @ontouchend="@(() => OnControlInput("Start", false))">
-                    Start
+                    START
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Settings Overlay (unchanged) -->
+<!-- Settings Overlay -->
 <div class="settings-overlay @(_showSettingsOverlay ? "show" : "")">
     <div class="overlay-header">
         <h6>Settings & Controls</h6>
@@ -136,6 +113,29 @@
     </div>
     
     <div class="overlay-content">
+        <!-- ROM Loading -->
+        <div class="overlay-section">
+            <h6>Game Cartridge</h6>
+            <RomLoader OnRomLoaded="OnRomLoaded" @ref="_romLoader" />
+        </div>
+
+        <!-- Save States -->
+        <div class="overlay-section">
+            <h6>Save States</h6>
+            <div class="gameboy-save-buttons">
+                <button class="btn-modern btn-success" @onclick="SaveState" disabled="@(!_hasRom)">
+                    💾 Save
+                </button>
+                <button class="btn-modern btn-primary" @onclick="LoadState" disabled="@(!_hasRom)">
+                    📁 Load
+                </button>
+                @if (_saveStateMessage != null)
+                {
+                    <small style="color: @(_saveStateSuccess ? "var(--success)" : "var(--danger)")">@_saveStateMessage</small>
+                }
+            </div>
+        </div>
+
         <!-- Emulator Controls -->
         <div class="overlay-section">
             <h6>Emulator Controls</h6>
