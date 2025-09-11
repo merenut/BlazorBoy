@@ -140,6 +140,15 @@
     // FPS tracking
     private double _lastFps;
     private long _lastTs;
+    
+    // Adaptive performance system
+    private int _currentCyclesPerFrame = 35000; // Start with 50% of full accuracy for better performance
+    private const int FullAccuracyCycles = 70224; // Full Game Boy accuracy
+    private const int MinCyclesPerFrame = 17500; // 25% accuracy for minimum performance
+    private const double TargetFps = 50.0; // Target FPS for adaptive adjustment
+    private const double FpsAdjustmentThreshold = 5.0; // FPS difference before adjusting
+    private int _performanceFrameCounter = 0;
+    private const int PerformanceAdjustmentInterval = 30; // Adjust every 30 frames (~0.5 seconds)
 
     // Debug
     private bool _showDebugInfo = false;
@@ -187,8 +196,16 @@
         // Skip emulation if we're in test mode or paused
         if (!_isInTestMode && _isRunning && _hasRom)
         {
-            // Apply speed multiplier - use correct cycles per frame (70224)
-            int cyclesPerFrame = (int)(70224 * _speedMultiplier); // Full Game Boy frame timing
+            // Adaptive performance adjustment
+            _performanceFrameCounter++;
+            if (_performanceFrameCounter >= PerformanceAdjustmentInterval)
+            {
+                AdjustPerformanceBasedOnFps();
+                _performanceFrameCounter = 0;
+            }
+            
+            // Apply speed multiplier with adaptive cycles
+            int cyclesPerFrame = (int)(_currentCyclesPerFrame * _speedMultiplier);
             bool frameReady = Emulator.StepFrame(cyclesPerFrame);
             
             if (frameReady)
@@ -261,6 +278,31 @@
     {
         _speedMultiplier = speed;
         await SettingsService.SetSpeedMultiplierAsync(speed);
+    }
+
+    /// <summary>
+    /// Adjusts cycles per frame based on current FPS to maintain smooth performance
+    /// </summary>
+    private void AdjustPerformanceBasedOnFps()
+    {
+        if (_lastFps <= 0) return; // No FPS data yet
+        
+        double fpsDifference = _lastFps - TargetFps;
+        
+        // If FPS is significantly lower than target, reduce cycles for better performance
+        if (fpsDifference < -FpsAdjustmentThreshold && _currentCyclesPerFrame > MinCyclesPerFrame)
+        {
+            // Reduce cycles by 10% but don't go below minimum
+            int reduction = Math.Max(1000, _currentCyclesPerFrame / 10);
+            _currentCyclesPerFrame = Math.Max(MinCyclesPerFrame, _currentCyclesPerFrame - reduction);
+        }
+        // If FPS is significantly higher than target, increase cycles for better accuracy
+        else if (fpsDifference > FpsAdjustmentThreshold && _currentCyclesPerFrame < FullAccuracyCycles)
+        {
+            // Increase cycles by 5% but don't exceed full accuracy
+            int increase = Math.Max(500, _currentCyclesPerFrame / 20);
+            _currentCyclesPerFrame = Math.Min(FullAccuracyCycles, _currentCyclesPerFrame + increase);
+        }
     }
 
     // Audio control
