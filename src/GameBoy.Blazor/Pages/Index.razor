@@ -187,8 +187,8 @@
         // Skip emulation if we're in test mode or paused
         if (!_isInTestMode && _isRunning && _hasRom)
         {
-            // Apply speed multiplier
-            int cyclesPerFrame = (int)(17500 * _speedMultiplier); // Adjusted for speed
+            // Apply speed multiplier - use correct cycles per frame (70224)
+            int cyclesPerFrame = (int)(70224 * _speedMultiplier); // Full Game Boy frame timing
             bool frameReady = Emulator.StepFrame(cyclesPerFrame);
             
             if (frameReady)
