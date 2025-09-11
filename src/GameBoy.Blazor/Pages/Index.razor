@@ -11,57 +11,124 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<!-- Header -->
-<div class="game-header">
-    <h1>BlazorBoy</h1>
-</div>
-
-<!-- Main Game Layout -->
-<div class="game-layout-centered">
-    <!-- Compact Game Cartridge Section -->
-    <div class="game-cartridge-compact">
+<!-- Game Boy Container -->
+<div class="gameboy-container">
+    <!-- ROM Loading Area (Top Left) -->
+    <div class="gameboy-rom-area">
         <h6>Game Cartridge</h6>
         <RomLoader OnRomLoaded="OnRomLoaded" @ref="_romLoader" />
     </div>
 
+    <!-- Save States Area (Bottom Left) -->
+    <div class="gameboy-save-area">
+        <h6>Save States</h6>
+        <div class="gameboy-save-buttons">
+            <button class="btn-modern btn-success" @onclick="SaveState" disabled="@(!_hasRom)">
+                💾 Save
+            </button>
+            <button class="btn-modern btn-primary" @onclick="LoadState" disabled="@(!_hasRom)">
+                📁 Load
+            </button>
+            @if (_saveStateMessage != null)
+            {
+                <small style="color: @(_saveStateSuccess ? "var(--success)" : "var(--danger)")">@_saveStateMessage</small>
+            }
+        </div>
+    </div>
 
+    <!-- Game Boy Header with Settings -->
+    <div class="gameboy-header">
+        <h1 class="gameboy-title">Game Boy</h1>
+        <button class="gameboy-settings-icon" @onclick="ToggleSettingsOverlay" aria-label="Settings">
+            ⚙️
+        </button>
+    </div>
 
-    <!-- Game Screen - Primary Focus -->
-        <div class="game-screen-container">
-            <div class="game-canvas-wrapper" tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
-                <canvas id="screen" width="160" height="144" 
-                        class="game-canvas"
-                        style="width: 320px; height: 288px;"></canvas>
-            </div>
-            <div class="canvas-instruction">
-                <small>Click on screen and use keyboard or touch controls</small>
+    <!-- Main Game Boy Body -->
+    <div class="gameboy-body">
+        <!-- Screen Area -->
+        <div class="gameboy-screen-area">
+            <div class="gameboy-screen-frame">
+                <div class="game-canvas-wrapper" tabindex="0" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp" @onclick="OnCanvasClick" @ref="_focusable">
+                    <canvas id="screen" width="160" height="144" 
+                            class="gameboy-canvas"></canvas>
+                </div>
             </div>
         </div>
 
-    <!-- Save States -->
-    <div class="save-states-compact">
-        <h6>Save States</h6>
-            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                <button class="btn-modern btn-success" @onclick="SaveState" disabled="@(!_hasRom)">
-                    💾 Quick Save
+        <!-- Controls -->
+        <div class="gameboy-controls">
+            <!-- D-Pad -->
+            <div class="gameboy-dpad">
+                <div class="dpad-container">
+                    <div class="dpad-center"></div>
+                    <button class="dpad-btn dpad-up" 
+                            @onmousedown="@(() => OnControlInput("Up", true))"
+                            @onmouseup="@(() => OnControlInput("Up", false))"
+                            @ontouchstart="@(() => OnControlInput("Up", true))"
+                            @ontouchend="@(() => OnControlInput("Up", false))">
+                    </button>
+                    <button class="dpad-btn dpad-down"
+                            @onmousedown="@(() => OnControlInput("Down", true))"
+                            @onmouseup="@(() => OnControlInput("Down", false))"
+                            @ontouchstart="@(() => OnControlInput("Down", true))"
+                            @ontouchend="@(() => OnControlInput("Down", false))">
+                    </button>
+                    <button class="dpad-btn dpad-left"
+                            @onmousedown="@(() => OnControlInput("Left", true))"
+                            @onmouseup="@(() => OnControlInput("Left", false))"
+                            @ontouchstart="@(() => OnControlInput("Left", true))"
+                            @ontouchend="@(() => OnControlInput("Left", false))">
+                    </button>
+                    <button class="dpad-btn dpad-right"
+                            @onmousedown="@(() => OnControlInput("Right", true))"
+                            @onmouseup="@(() => OnControlInput("Right", false))"
+                            @ontouchstart="@(() => OnControlInput("Right", true))"
+                            @ontouchend="@(() => OnControlInput("Right", false))">
+                    </button>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="gameboy-action-buttons">
+                <button class="gameboy-btn btn-b"
+                        @onmousedown="@(() => OnControlInput("B", true))"
+                        @onmouseup="@(() => OnControlInput("B", false))"
+                        @ontouchstart="@(() => OnControlInput("B", true))"
+                        @ontouchend="@(() => OnControlInput("B", false))">
+                    B
                 </button>
-                <button class="btn-modern btn-primary" @onclick="LoadState" disabled="@(!_hasRom)">
-                    📁 Quick Load
+                <button class="gameboy-btn btn-a"
+                        @onmousedown="@(() => OnControlInput("A", true))"
+                        @onmouseup="@(() => OnControlInput("A", false))"
+                        @ontouchstart="@(() => OnControlInput("A", true))"
+                        @ontouchend="@(() => OnControlInput("A", false))">
+                    A
                 </button>
-                @if (_saveStateMessage != null)
-                {
-                    <small style="color: @(_saveStateSuccess ? "var(--success)" : "var(--danger)")">@_saveStateMessage</small>
-                }
+            </div>
+
+            <!-- Start/Select Buttons -->
+            <div class="gameboy-start-select">
+                <button class="gameboy-start-select-btn"
+                        @onmousedown="@(() => OnControlInput("Select", true))"
+                        @onmouseup="@(() => OnControlInput("Select", false))"
+                        @ontouchstart="@(() => OnControlInput("Select", true))"
+                        @ontouchend="@(() => OnControlInput("Select", false))">
+                    Select
+                </button>
+                <button class="gameboy-start-select-btn"
+                        @onmousedown="@(() => OnControlInput("Start", true))"
+                        @onmouseup="@(() => OnControlInput("Start", false))"
+                        @ontouchstart="@(() => OnControlInput("Start", true))"
+                        @ontouchend="@(() => OnControlInput("Start", false))">
+                    Start
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Settings Overlay Toggle Button -->
-<button class="overlay-toggle-btn" @onclick="ToggleSettingsOverlay" aria-label="Toggle Settings">
-    ⚙️ Settings
-</button>
-
-<!-- Settings Overlay -->
+<!-- Settings Overlay (unchanged) -->
 <div class="settings-overlay @(_showSettingsOverlay ? "show" : "")">
     <div class="overlay-header">
         <h6>Settings & Controls</h6>
@@ -118,9 +185,6 @@
     </div>
 </div>
 
-<!-- Touch Overlay for Mobile -->
-<TouchOverlay OnButtonStateChanged="OnTouchInput" @ref="_touchOverlay" />
-
 @code {
     // Component references
     private RomLoader? _romLoader;
@@ -128,7 +192,6 @@
     private AudioToggle? _audioToggle;
     private FpsCounter? _fpsCounter;
     private InputRemapping? _inputRemapping;
-    private TouchOverlay? _touchOverlay;
 
     // Core emulator state
     private DotNetObjectReference<Index>? _dotNetRef;
@@ -376,7 +439,23 @@
         // Volume is managed by the AudioToggle component
     }
 
-    // Input handling
+    // Input handling - Virtual controls
+    private void OnControlInput(string button, bool pressed)
+    {
+        switch (button)
+        {
+            case "Up": Emulator.Joypad.Up = pressed; break;
+            case "Down": Emulator.Joypad.Down = pressed; break;
+            case "Left": Emulator.Joypad.Left = pressed; break;
+            case "Right": Emulator.Joypad.Right = pressed; break;
+            case "A": Emulator.Joypad.A = pressed; break;
+            case "B": Emulator.Joypad.B = pressed; break;
+            case "Start": Emulator.Joypad.Start = pressed; break;
+            case "Select": Emulator.Joypad.Select = pressed; break;
+        }
+    }
+
+    // Keyboard input handling
     private void OnKeyDown(KeyboardEventArgs e) => UpdateJoypad(e, true);
     private void OnKeyUp(KeyboardEventArgs e) => UpdateJoypad(e, false);
 
@@ -400,22 +479,6 @@
                 }
                 break;
             }
-        }
-    }
-
-    private void OnTouchInput((string button, bool pressed) input)
-    {
-        // Handle touch input
-        switch (input.button)
-        {
-            case "Up": Emulator.Joypad.Up = input.pressed; break;
-            case "Down": Emulator.Joypad.Down = input.pressed; break;
-            case "Left": Emulator.Joypad.Left = input.pressed; break;
-            case "Right": Emulator.Joypad.Right = input.pressed; break;
-            case "A": Emulator.Joypad.A = input.pressed; break;
-            case "B": Emulator.Joypad.B = input.pressed; break;
-            case "Start": Emulator.Joypad.Start = input.pressed; break;
-            case "Select": Emulator.Joypad.Select = input.pressed; break;
         }
     }
 
